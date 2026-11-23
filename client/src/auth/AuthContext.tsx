@@ -33,13 +33,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading: me.isLoading,
     async login(email, password) {
       const user = await api<User>('/auth/login', { body: { email, password } });
-      qc.clear();
+      // Drop the previous user's data but keep the ['me'] query itself:
+      // clearing it would detach the observer above and the app would not see the login.
+      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
       qc.setQueryData(['me'], user);
       return user;
     },
     async logout() {
       await api('/auth/logout', { method: 'POST' });
-      qc.clear();
+      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
       qc.setQueryData(['me'], null);
     },
   };
