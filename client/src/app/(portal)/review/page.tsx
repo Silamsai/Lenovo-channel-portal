@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { apiGet } from '@/lib/api';
 import { dateLabel, money, quarterLabel } from '@/lib/format';
@@ -44,7 +45,7 @@ export default async function ReviewQueuePage() {
                     {f.partner.name} · {quarterLabel(f.quarter)} · {money(f.amount)} requested · {money((f as Funding & { available: number }).available)} available
                   </p>
                 </div>
-                <a href={`/funding/${f.id}`}>Review →</a>
+                <Link href={`/funding/${f.id}`}>Review →</Link>
               </div>
             )}
           />
@@ -63,7 +64,7 @@ export default async function ReviewQueuePage() {
                     {f.partner.name} · {f.campaign?.assets.length} file(s)
                   </p>
                 </div>
-                <a href={`/campaigns/${f.id}/3`}>Review →</a>
+                <Link href={`/campaigns/${f.id}/3`}>Review →</Link>
               </div>
             )}
           />
@@ -82,7 +83,7 @@ export default async function ReviewQueuePage() {
                     {f.partner.name} · {money(f.campaign?.claim?.amount)} claimed of {money(f.amount)} approved
                   </p>
                 </div>
-                <a href={`/campaigns/${f.id}/5`}>Review →</a>
+                <Link href={`/campaigns/${f.id}/5`}>Review →</Link>
               </div>
             )}
           />
@@ -101,7 +102,7 @@ export default async function ReviewQueuePage() {
                     {f.partner.name} · {money(f.campaign?.claim?.amount)} · approved {dateLabel(f.campaign?.claim?.decidedAt)}
                   </p>
                 </div>
-                <a href={`/campaigns/${f.id}/5`}>Record payment →</a>
+                <Link href={`/campaigns/${f.id}/5`}>Record payment →</Link>
               </div>
             )}
           />
@@ -118,9 +119,9 @@ export default async function ReviewQueuePage() {
             <h3>Partner programme</h3>
             <Kv k="Benefit requests" v={<Badge>{`${data.benefits.length} pending`}</Badge>} />
             <Kv k="Points requests" v={<Badge>{`${data.points.length} pending`}</Badge>} />
-            <a className="btn secondary spaced" href="/administration">
+            <Link className="btn secondary spaced" href="/administration">
               Open administration →
-            </a>
+            </Link>
           </div>
         </section>
       </div>

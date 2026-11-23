@@ -20,7 +20,7 @@ The browser only talks to Next.js. Next.js calls the backend API from its server
 
 | Where | What |
 |---|---|
-| `client/src/lib/brand.ts` | Brand name, login headline, demo-login box on/off |
+| `client/src/lib/brand.ts` | Brand name, logo, login headline |
 | `client/src/styles/theme.css` | Colours, fonts, sizes (design tokens) |
 | `client/src/styles/app.css` | Layout and component styles |
 | `client/src/app/(portal)/` | One folder per page (e.g. `funding/[id]/page.tsx`) |
@@ -28,7 +28,7 @@ The browser only talks to Next.js. Next.js calls the backend API from its server
 | `backend/src/routes/` | API endpoints |
 | `backend/src/services/rules.ts` | Business rules (contribution %, limits, funnel checks, claim limit) |
 | `backend/src/db/migrations/*.sql` | Database tables (plain SQL) |
-| `backend/src/db/seed.ts` | Sample partners, kits, users and funding |
+| `backend/src/db/reset.ts` | Fresh start: empties the database, keeps one admin |
 
 ## Setup
 
@@ -45,25 +45,19 @@ Requires Node 20+ (tested on Node 24) and a PostgreSQL database.
    ```
    - Neon: Dashboard → Connect → copy the `postgresql://…?sslmode=require` string.
    - Supabase: Project settings → Database → Connection string (URI). Add `?sslmode=require` if it is not there.
-3. **Create tables and sample data:**
+3. **Create the tables:**
    ```bash
-   npm run db:migrate
-   npm run db:seed        # optional: resets all data to the samples
+   npm run db:migrate     # safe to run any time
+   npm run db:reset       # first time only: empty database + one platform admin
    ```
 4. **Run:**
    ```bash
    npm run dev            # backend on :4000 + Next.js on http://localhost:3000
    ```
 
-Sample logins (stored as bcrypt hashes):
+First sign-in: **admin@lenovo.com / lenovo@2026** (platform admin). Change the password in Admin → Users after signing in. The admin creates every other account.
 
-| Role | Email | Password |
-|---|---|---|
-| Partner marketer | partner@demo.example | PartnerDemo26! |
-| Programme reviewer | reviewer@demo.example | ReviewerDemo26! |
-| Platform admin | admin@lenovo.com | lenovo@2026 |
-
-`npm run admin:create` creates or resets only the admin account, keeping all other data.
+`npm run admin:create` creates or resets only the admin account, keeping all other data. **`npm run db:reset` deletes everything**; never run it once you have real data.
 
 ## Production
 
@@ -73,7 +67,7 @@ npm start                     # backend API on :4000
 npm run start:client          # Next.js on :3000
 ```
 
-Set `NODE_ENV=production`, a long random `JWT_SECRET`, `CLIENT_ORIGIN`, and `API_URL` for the client. Turn off `showDemoLogins` in `client/src/lib/brand.ts`.
+Set `NODE_ENV=production`, a long random `JWT_SECRET`, `CLIENT_ORIGIN`, and `API_URL` for the client.
 
 ## Security model
 

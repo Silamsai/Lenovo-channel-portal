@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiGet } from '@/lib/api';
 import { dateLabel } from '@/lib/format';
 import { requireUser } from '@/lib/session';
@@ -26,9 +27,9 @@ export default async function BenefitsPage({ searchParams }: { searchParams: Pro
               <span className="muted small">{b.limitText}</span>
             </div>
             {b.eligible ? (
-              <a className="cardfoot" href={`/benefits/${b.id}/request`}>
+              <Link className="cardfoot" href={`/benefits/${b.id}/request`}>
                 Request {b.name.toLowerCase()} <span>→</span>
-              </a>
+              </Link>
             ) : (
               <span className="cardfoot muted">Not available for your segment</span>
             )}

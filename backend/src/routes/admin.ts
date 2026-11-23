@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { db } from '../db';
-import { auth, role } from '../auth';
+import { auth, forgetUser, role } from '../auth';
 import { badRequest, conflict, notFound } from '../lib/http';
 import { Router } from '../lib/router';
 import { audit } from '../services/audit';
@@ -127,6 +127,7 @@ adminRoutes.put('/users/:id', ...admin, async (ctx) => {
   if (existing.role === 'ADMIN' && (b.role !== 'ADMIN' || !b.active) && (await activeAdmins(id)) === 0) throw badRequest('At least one active platform admin is required.');
   const partnerId = await partnerLink(b.role, b.partnerId);
   await db.run('UPDATE users SET name=$1, email=$2, role=$3, active=$4, partner_id=$5 WHERE id=$6', [b.name, b.email, b.role, b.active, partnerId, id]);
+  forgetUser(id);
   await audit({
     userId: ctx.me.id,
     entity: 'user',
@@ -154,6 +155,7 @@ adminRoutes.delete('/users/:id', ...admin, async (ctx) => {
   if (id === ctx.me.id) throw badRequest('You cannot delete your own account.');
   if (user.role === 'ADMIN' && user.active && (await activeAdmins(id)) === 0) throw badRequest('At least one active platform admin is required.');
   await db.run('DELETE FROM users WHERE id = $1', [id]);
+  forgetUser(id);
   await audit({ userId: ctx.me.id, entity: 'user', entityId: id, action: 'User deleted', note: user.email });
   return { ok: true };
 });

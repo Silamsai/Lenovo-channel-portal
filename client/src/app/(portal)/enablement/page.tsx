@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiGet } from '@/lib/api';
 import { completeModule } from '@/lib/actions';
 import { requireUser } from '@/lib/session';
@@ -59,17 +60,17 @@ export default async function EnablementPage({ searchParams }: { searchParams: P
         <section className="panel">
           <h3>Your learning plan</h3>
           {modules.map((m) => (
-            <a key={m.id} href={`/enablement?module=${m.id}`} className={`module-link ${m.id === mod?.id ? 'current' : ''}`}>
+            <Link key={m.id} href={`/enablement?module=${m.id}`} className={`module-link ${m.id === mod?.id ? 'current' : ''}`}>
               <Check done={m.completed}>{m.title}</Check>
-            </a>
+            </Link>
           ))}
           <Progress value={modules.length ? (done / modules.length) * 100 : 0} />
           <p className="muted small">
             {done} of {modules.length} modules completed
           </p>
-          <a className="btn secondary" href="/library">
+          <Link className="btn secondary" href="/library">
             Return to campaigns
-          </a>
+          </Link>
         </section>
       </div>
     </>

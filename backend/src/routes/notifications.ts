@@ -66,7 +66,6 @@ function titleFor(r: Record<string, any>) {
 }
 
 async function notificationsFor(user: AuthUser) {
-  const me = await db.one('SELECT notifications_seen_at FROM users WHERE id = $1', [user.id]);
   let where: string;
   const params: unknown[] = [];
   if (user.role === 'PARTNER') {
@@ -82,7 +81,10 @@ async function notificationsFor(user: AuthUser) {
     params.push(user.id);
     where = `r.entity IN ('user','partner','settings') AND (r.user_id IS NULL OR r.user_id <> $1)`;
   }
-  const rows = await db.many(`SELECT * FROM (${RESOLVED}) r WHERE ${where} ORDER BY r.created_at DESC, r.id DESC LIMIT 20`, params);
+  const [me, rows] = await Promise.all([
+    db.one('SELECT notifications_seen_at FROM users WHERE id = $1', [user.id]),
+    db.many(`SELECT * FROM (${RESOLVED}) r WHERE ${where} ORDER BY r.created_at DESC, r.id DESC LIMIT 20`, params),
+  ]);
   const seen = me.notificationsSeenAt ? new Date(me.notificationsSeenAt).getTime() : 0;
   const isPartner = user.role === 'PARTNER';
   const items = rows.map((r) => ({

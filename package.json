@@ -12,8 +12,8 @@
     "start": "npm start --prefix backend",
     "start:client": "npm start --prefix client",
     "db:migrate": "npm run db:migrate --prefix backend",
-    "db:seed": "npm run db:seed --prefix backend",
     "admin:create": "npm run admin:create --prefix backend",
-    "typecheck": "npm run typecheck --prefix backend && npm run typecheck --prefix client"
+    "typecheck": "npm run typecheck --prefix backend && npm run typecheck --prefix client",
+    "db:reset": "npm run db:reset --prefix backend"
   }
 }

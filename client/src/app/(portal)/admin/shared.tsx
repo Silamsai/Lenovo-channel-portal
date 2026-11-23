@@ -1,6 +1,8 @@
+import Link from 'next/link';
 import type { FormState } from '@/lib/actions';
 import type { Role } from '@/lib/types';
 import { ActionForm, Submit } from '@/components/forms';
+import { RoleFields } from './RoleFields';
 
 export interface AdminUser {
   id: number;
@@ -50,35 +52,12 @@ export function UserForm({ action, user, partners, isSelf }: { action: Action; u
           <label htmlFor="u-email">Email (used to sign in)</label>
           <input id="u-email" name="email" type="email" required defaultValue={user?.email} />
         </div>
-        <div className="field">
-          <label htmlFor="u-role">Role</label>
-          {isSelf ? (
-            <>
-              <input type="hidden" name="role" value="ADMIN" />
-              <input id="u-role" value={ROLE_LABELS.ADMIN} readOnly />
-            </>
-          ) : (
-            <select id="u-role" name="role" defaultValue={user?.role ?? 'PARTNER'}>
-              {Object.entries(ROLE_LABELS).map(([v, l]) => (
-                <option key={v} value={v}>
-                  {l}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-        <div className="field">
-          <label htmlFor="u-partner">Partner organisation</label>
-          <select id="u-partner" name="partnerId" defaultValue={user?.partner?.id ?? ''}>
-            <option value="">None (programme team)</option>
-            {partners.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.code})
-              </option>
-            ))}
-          </select>
-          <small className="muted">Required for partner marketers; ignored for reviewers and admins.</small>
-        </div>
+        <RoleFields
+          defaultRole={user?.role ?? 'PARTNER'}
+          defaultPartnerId={user?.partner?.id ?? null}
+          partners={partners.map((p) => ({ id: p.id, name: p.name, code: p.code }))}
+          lockedAdmin={isSelf}
+        />
       </div>
       {!user && (
         <div className="field">
@@ -98,9 +77,9 @@ export function UserForm({ action, user, partners, isSelf }: { action: Action; u
       </p>
       <div className="actions">
         <Submit>{user ? 'Save changes' : 'Create user'} →</Submit>
-        <a className="btn secondary" href="/admin/users">
+        <Link className="btn secondary" href="/admin/users">
           Cancel
-        </a>
+        </Link>
       </div>
     </ActionForm>
   );
@@ -159,9 +138,9 @@ export function PartnerForm({ action, partner }: { action: Action; partner?: Adm
       </div>
       <div className="actions">
         <Submit>{partner ? 'Save changes' : 'Create organisation'} →</Submit>
-        <a className="btn secondary" href="/admin/users?tab=partners">
+        <Link className="btn secondary" href="/admin/users?tab=partners">
           Cancel
-        </a>
+        </Link>
       </div>
     </ActionForm>
   );

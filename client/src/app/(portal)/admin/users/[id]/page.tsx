@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiGet } from '@/lib/api';
 import { deleteUser, resetPassword, updateUser } from '@/lib/actions';
@@ -19,7 +20,7 @@ export default async function ManageUserPage({ params }: { params: Promise<{ id:
   return (
     <>
       <div className="breadcrumb">
-        <a href="/admin/users">Users</a> / {user.name}
+        <Link href="/admin/users">Users</Link> / {user.name}
       </div>
       <PageHead role={me.role} title={user.name} sub={`${user.email} · ${ROLE_LABELS[user.role]}${isSelf ? ' · you' : ''}`} action={<Badge>{user.active ? 'Active' : 'Deactivated'}</Badge>} />
       <div className="grid">

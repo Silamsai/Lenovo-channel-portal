@@ -10,8 +10,8 @@
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "db:migrate": "tsx src/db/migrate.ts",
-    "db:seed": "tsx src/db/seed.ts",
-    "admin:create": "tsx src/db/create-admin.ts"
+    "admin:create": "tsx src/db/create-admin.ts",
+    "db:reset": "tsx src/db/reset.ts"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",

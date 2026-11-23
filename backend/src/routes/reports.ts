@@ -20,13 +20,15 @@ async function buildReport(ctx: Ctx) {
     params.push(quarter);
     conditions.push(`f.quarter = $${params.length}`);
   }
-  const rows = await loadFunding(conditions.join(' AND '), params, 'f.date, f.id');
-  const exports = await db.one(
-    user.role === 'PARTNER'
-      ? `SELECT COUNT(*)::int AS n FROM audit_log a JOIN users u ON u.id = a.user_id WHERE a.entity = 'kit' AND a.action = 'Exported' AND u.partner_id = $1`
-      : `SELECT COUNT(*)::int AS n FROM audit_log WHERE entity = 'kit' AND action = 'Exported'`,
-    user.role === 'PARTNER' ? [user.partnerId] : [],
-  );
+  const [rows, exports] = await Promise.all([
+    loadFunding(conditions.join(' AND '), params, 'f.date, f.id'),
+    db.one(
+      user.role === 'PARTNER'
+        ? `SELECT COUNT(*)::int AS n FROM audit_log a JOIN users u ON u.id = a.user_id WHERE a.entity = 'kit' AND a.action = 'Exported' AND u.partner_id = $1`
+        : `SELECT COUNT(*)::int AS n FROM audit_log WHERE entity = 'kit' AND action = 'Exported'`,
+      user.role === 'PARTNER' ? [user.partnerId] : [],
+    ),
+  ]);
   const claims = rows.map((r) => r.campaign?.claim).filter((c): c is NonNullable<typeof c> => !!c);
   const sum = (xs: (number | null)[]) => round2(xs.reduce<number>((n, x) => n + (x ?? 0), 0));
   return {

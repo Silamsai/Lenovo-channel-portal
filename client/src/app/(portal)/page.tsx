@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { apiGet } from '@/lib/api';
 import { brand } from '@/lib/brand';
@@ -15,12 +16,17 @@ export default async function OverviewPage({ searchParams }: Props) {
   const user = await requireUser();
   if (user.role === 'ADMIN') redirect('/admin');
   const quarter = (await searchParams).quarter ?? 'all';
-  const list = await apiGet<{ items: Funding[]; budget: Budget | null }>(`/funding?quarter=${encodeURIComponent(quarter)}`);
-  return user.role === 'REVIEWER' ? <ReviewerOverview items={list.items} quarter={quarter} /> : <PartnerOverview items={list.items} quarter={quarter} partnerName={user.partner?.name ?? ''} />;
+  const listPath = `/funding?quarter=${encodeURIComponent(quarter)}`;
+  // Fetch everything the page needs at the same time.
+  if (user.role === 'REVIEWER') {
+    const [list, q] = await Promise.all([apiGet<{ items: Funding[]; budget: Budget | null }>(listPath), apiGet<ReviewQueue>('/reviews/queue')]);
+    return <ReviewerOverview items={list.items} quarter={quarter} q={q} />;
+  }
+  const [list, modules] = await Promise.all([apiGet<{ items: Funding[]; budget: Budget | null }>(listPath), apiGet<LearningModule[]>('/enablement')]);
+  return <PartnerOverview items={list.items} quarter={quarter} partnerName={user.partner?.name ?? ''} modules={modules} />;
 }
 
-async function PartnerOverview({ items, quarter, partnerName }: { items: Funding[]; quarter: string; partnerName: string }) {
-  const modules = await apiGet<LearningModule[]>('/enablement');
+function PartnerOverview({ items, quarter, partnerName, modules }: { items: Funding[]; quarter: string; partnerName: string; modules: LearningModule[] }) {
   const approved = items.filter((f) => f.status === 'Approved');
   const active = approved.filter((f) => f.campaign && !f.campaign.claim?.paidAt);
   const reported = approved.filter((f) => f.campaign?.resultsReady);
@@ -32,16 +38,13 @@ async function PartnerOverview({ items, quarter, partnerName }: { items: Funding
   return (
     <div className="overview">
       <div className="ov-top">
-        <div>
-          <p className="eyebrow">{brand.name} partner workspace</p>
-          <h1>Overview</h1>
-          <p className="sub">Welcome back, {partnerName}.</p>
-        </div>
+        <h1 className="visually-hidden">Overview</h1>
+        <p className="sub">Welcome back, {partnerName}.</p>
         <div className="ov-tools">
           <FilterBar action="/" quarter={quarter} />
-          <a className="btn" href="/funding/new">
+          <Link className="btn" href="/funding/new">
             ＋ Request funding
-          </a>
+          </Link>
         </div>
       </div>
 
@@ -50,9 +53,9 @@ async function PartnerOverview({ items, quarter, partnerName }: { items: Funding
           <span className="ov-kicker">Your next move</span>
           <h2>{lead?.step?.title ?? 'Your quarter is moving forward.'}</h2>
           <p>{lead ? `${lead.f.code} · ${lead.f.title}` : 'Keep an eye on your campaigns, approvals and partner opportunities.'}</p>
-          <a className="ov-hero-link" href={lead?.step?.to ?? '/campaigns'}>
+          <Link className="ov-hero-link" href={lead?.step?.to ?? '/campaigns'}>
             {lead?.step?.label ?? 'View your campaigns'} →
-          </a>
+          </Link>
         </div>
         <div className="ov-hero-aside">
           <span>{brand.journey.join('. ').toUpperCase()}.</span>
@@ -80,7 +83,7 @@ async function PartnerOverview({ items, quarter, partnerName }: { items: Funding
                 <h2>Your activity</h2>
                 <p className="muted small">Every campaign starts with approved funding.</p>
               </div>
-              <a href="/campaigns">View all →</a>
+              <Link href="/campaigns">View all →</Link>
             </div>
             <div className="pipeline">
               {(
@@ -110,18 +113,18 @@ async function PartnerOverview({ items, quarter, partnerName }: { items: Funding
               </div>
             </div>
             <div className="tiles">
-              <a href="/benefits" className="tile">
+              <Link href="/benefits" className="tile">
                 <span className="tile-icon">◇</span>
                 <h3>Make more of your benefits</h3>
                 <p>Explore campaign planning, content review and specialist support.</p>
                 <span>Explore benefits →</span>
-              </a>
-              <a href="/rewards" className="tile">
+              </Link>
+              <Link href="/rewards" className="tile">
                 <span className="tile-icon">☆</span>
                 <h3>Put your rewards to work</h3>
                 <p>Track approved activity and redeem points for programme support.</p>
                 <span>View rewards →</span>
-              </a>
+              </Link>
             </div>
           </section>
         </div>
@@ -140,7 +143,7 @@ async function PartnerOverview({ items, quarter, partnerName }: { items: Funding
                   <p>
                     {f.code} · {f.title}
                   </p>
-                  <a href={step!.to}>{step!.label} →</a>
+                  <Link href={step!.to}>{step!.label} →</Link>
                 </article>
               ))}
               {!tasks.length && (
@@ -162,7 +165,7 @@ async function PartnerOverview({ items, quarter, partnerName }: { items: Funding
               <span>
                 {done} of {modules.length} modules
               </span>
-              <a href="/enablement">{done === modules.length ? 'Review learning' : 'Continue learning'} →</a>
+              <Link href="/enablement">{done === modules.length ? 'Review learning' : 'Continue learning'} →</Link>
             </div>
           </section>
         </div>
@@ -207,14 +210,14 @@ function ActivityTable({ items, showPartner }: { items: Funding[]; showPartner: 
                 <Badge>{campaignStatus(f)}</Badge>
               </td>
               <td>
-                <a href={f.campaign ? `/campaigns/${f.id}` : `/funding/${f.id}`}>View →</a>
+                <Link href={f.campaign ? `/campaigns/${f.id}` : `/funding/${f.id}`}>View →</Link>
               </td>
             </tr>
           ))}
           {!items.length && (
             <tr>
               <td colSpan={5} className="muted">
-                Nothing in this period. <a href="/funding/new">Request funding →</a>
+                Nothing in this period. <Link href="/funding/new">Request funding →</Link>
               </td>
             </tr>
           )}
@@ -224,23 +227,19 @@ function ActivityTable({ items, showPartner }: { items: Funding[]; showPartner: 
   );
 }
 
-async function ReviewerOverview({ items, quarter }: { items: Funding[]; quarter: string }) {
-  const q = await apiGet<ReviewQueue>('/reviews/queue');
+function ReviewerOverview({ items, quarter, q }: { items: Funding[]; quarter: string; q: ReviewQueue }) {
   const approved = items.filter((f) => f.status === 'Approved');
   const claimsApproved = items.map((f) => f.campaign?.claim).filter((c) => c?.status === 'Approved');
   return (
     <div className="overview">
       <div className="ov-top">
-        <div>
-          <p className="eyebrow">Programme workspace</p>
-          <h1>Programme overview</h1>
-          <p className="sub">Funding, campaigns and claims across all partners.</p>
-        </div>
+        <h1 className="visually-hidden">Programme overview</h1>
+        <span />
         <div className="ov-tools">
           <FilterBar action="/" quarter={quarter} />
-          <a className="btn" href="/review">
+          <Link className="btn" href="/review">
             Open review queue
-          </a>
+          </Link>
         </div>
       </div>
       <div className="metrics">
@@ -252,7 +251,7 @@ async function ReviewerOverview({ items, quarter }: { items: Funding[]; quarter:
       <section className="panel flush">
         <div className="panelhead">
           <h2>All activity</h2>
-          <a href="/funding">Funding & claims →</a>
+          <Link href="/funding">Funding & claims →</Link>
         </div>
         <ActivityTable items={items} showPartner />
       </section>

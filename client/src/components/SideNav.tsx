@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { IconType } from 'react-icons';
 import {
@@ -60,17 +61,17 @@ const NAV: Record<Role, { main: Item[]; programme?: Item[] }> = {
   },
 };
 
-/** Sidebar links. Plain <a> links: every click loads a new page from the server. */
+/** Sidebar links. Next.js <Link>: pages are server-rendered and open without a full reload. */
 export function SideNav({ role, queueCount }: { role: Role; queueCount: number }) {
   const path = usePathname();
   const active = (href: string) =>
     href === '/' || href === '/admin' ? path === href : path === href || path.startsWith(href + '/') || (href === '/funding' && path === '/claims');
   const link = ([href, Icon, label]: Item) => (
-    <a key={href} href={href} className={active(href) ? 'active' : undefined} aria-current={active(href) ? 'page' : undefined}>
+    <Link key={href} href={href} className={active(href) ? 'active' : undefined} aria-current={active(href) ? 'page' : undefined}>
       <Icon className="navicon" aria-hidden />
       {label}
       {href === '/review' && queueCount > 0 && <span className="navcount">{queueCount}</span>}
-    </a>
+    </Link>
   );
   const nav = NAV[role];
   return (

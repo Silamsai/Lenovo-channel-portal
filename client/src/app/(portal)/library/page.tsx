@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiGet } from '@/lib/api';
 import { requireUser } from '@/lib/session';
 import type { Kit } from '@/lib/types';
@@ -35,9 +36,9 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
                 {kit.assets.length} assets · {kit.market}
               </span>
             </div>
-            <a className="cardfoot" href={`/library/${kit.slug}`}>
+            <Link className="cardfoot" href={`/library/${kit.slug}`}>
               Explore campaign <span>↗</span>
-            </a>
+            </Link>
           </article>
         ))}
         {!list.length && <div className="panel wide">No campaigns match. Try another keyword or solution.</div>}

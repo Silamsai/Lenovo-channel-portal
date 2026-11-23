@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Don't create client/AGENTS.md (notes for AI coding assistants) on `next dev`.
   agentRules: false,
+  // Next.js dev-tools "N" button: bottom-right so it does not cover the sidebar's Sign out.
+  devIndicators: { position: 'bottom-right' },
 };
 
 export default nextConfig;

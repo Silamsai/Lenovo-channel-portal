@@ -1,11 +1,12 @@
+import Link from 'next/link';
 import { LuLogOut } from 'react-icons/lu';
 import { apiGet } from '@/lib/api';
 import { logout } from '@/lib/actions';
 import { brand } from '@/lib/brand';
 import { homeFor, requireUser } from '@/lib/session';
-import type { ReviewQueue } from '@/lib/types';
 import { NotificationBell } from '@/components/NotificationBell';
 import { SideNav } from '@/components/SideNav';
+import { TopbarTitle } from '@/components/TopbarTitle';
 
 const ROLE_LABEL = { PARTNER: 'Partner marketer', REVIEWER: 'Programme reviewer', ADMIN: 'Platform admin' } as const;
 
@@ -15,18 +16,21 @@ export default async function PortalLayout({ children }: { children: React.React
   const isAdmin = user.role === 'ADMIN';
   let queueCount = 0;
   if (user.role === 'REVIEWER') {
-    const q = await apiGet<ReviewQueue>('/reviews/queue');
-    queueCount = q.funding.length + q.assets.length + q.claims.length + q.benefits.length + q.points.length;
+    // One small count query instead of loading the whole review queue on every page.
+    queueCount = (await apiGet<{ count: number }>('/reviews/count')).count;
   }
 
   return (
     <div className="shell">
       <header className="topbar">
-        <a href={homeFor(user.role)} className="brand">
+        <Link href={homeFor(user.role)} className="brand">
           <img className="wordmark-logo" src={brand.logo} alt={brand.name} />
           <span className="brand-product">{brand.product}</span>
-        </a>
-        <NotificationBell />
+        </Link>
+        <div className="topbar-main">
+          <TopbarTitle role={user.role} />
+          <NotificationBell />
+        </div>
       </header>
       <aside className="sidebar">
         <div className="org">

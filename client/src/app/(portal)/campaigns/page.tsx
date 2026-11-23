@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiGet } from '@/lib/api';
 import { money, quarterLabel } from '@/lib/format';
 import { requireUser } from '@/lib/session';
@@ -22,9 +23,9 @@ export default async function MyCampaignsPage({ searchParams }: { searchParams: 
         title="My campaigns"
         sub="Every campaign follows the same five steps, from funding request to claim."
         action={
-          <a className="btn" href="/funding/new">
+          <Link className="btn" href="/funding/new">
             Request funding →
-          </a>
+          </Link>
         }
       />
       <FilterBar action="/campaigns" quarter={quarter}>
@@ -48,7 +49,7 @@ export default async function MyCampaignsPage({ searchParams }: { searchParams: 
                   {LABELS.map((l, i) =>
                     stepAllowed(f, i + 1) ? (
                       <li key={l}>
-                        <a href={`/campaigns/${f.id}/${i + 1}`}>{l}</a>
+                        <Link href={`/campaigns/${f.id}/${i + 1}`}>{l}</Link>
                       </li>
                     ) : (
                       <li key={l} className="muted">
@@ -58,16 +59,16 @@ export default async function MyCampaignsPage({ searchParams }: { searchParams: 
                   )}
                 </ol>
               </div>
-              <a className="cardfoot" href={next?.to ?? `/campaigns/${f.id}`}>
+              <Link className="cardfoot" href={next?.to ?? `/campaigns/${f.id}`}>
                 {next ? next.label : 'Open campaign'} <span>→</span>
-              </a>
+              </Link>
             </article>
           );
         })}
         {!items.length && <div className="panel wide">No campaigns in this quarter.</div>}
       </div>
       <p>
-        <a href="/library">Browse campaign kits →</a>
+        <Link href="/library">Browse campaign kits →</Link>
       </p>
     </>
   );

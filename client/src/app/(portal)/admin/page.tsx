@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiGet } from '@/lib/api';
 import { money } from '@/lib/format';
 import { requireUser } from '@/lib/session';
@@ -24,9 +25,9 @@ export default async function AdminOverviewPage() {
         title="Overview"
         sub="Accounts, partner organisations and activity across the whole platform."
         action={
-          <a className="btn" href="/admin/users/new">
+          <Link className="btn" href="/admin/users/new">
             ＋ Add user
-          </a>
+          </Link>
         }
       />
       <div className="metrics">
@@ -82,16 +83,16 @@ export default async function AdminOverviewPage() {
             <Kv k="Programme reviewers" v={d.users.byRole.REVIEWER ?? 0} />
             <Kv k="Platform admins" v={d.users.byRole.ADMIN ?? 0} />
             <Kv k="Signed in this week" v={d.users.activeThisWeek} />
-            <a className="btn secondary spaced" href="/admin/users">
+            <Link className="btn secondary spaced" href="/admin/users">
               Manage users →
-            </a>
+            </Link>
           </section>
           <section className="panel">
             <h3>Programme settings</h3>
             <p className="muted small">Funding limits, contribution share, default budgets and reward points.</p>
-            <a className="btn secondary" href="/admin/settings">
+            <Link className="btn secondary" href="/admin/settings">
               Open settings →
-            </a>
+            </Link>
           </section>
         </div>
       </div>

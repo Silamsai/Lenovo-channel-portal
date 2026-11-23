@@ -1,5 +1,6 @@
+import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { apiGet } from '@/lib/api';
+import { ApiError, apiGet } from '@/lib/api';
 import {
   decideAssets,
   decideClaim,
@@ -35,14 +36,19 @@ export default async function CampaignStepPage({ params }: { params: Promise<{ f
   const fid = Number(p.fid);
   const step = Number(p.step);
   if (!Number.isInteger(fid) || !(step >= 1 && step <= 5)) notFound();
-  const funding = await apiGet<{ item: Funding; history: HistoryEntry[] }>(`/funding/${fid}`);
-  let item = funding.item;
-  let histories: Histories | null = null;
-  if (item.campaign) {
-    const detail = await apiGet<{ item: Funding; history: Histories }>(`/campaigns/${fid}`);
-    item = detail.item;
-    histories = detail.history;
-  }
+  // All data for the step in parallel. /campaigns/:fid answers 409 until the campaign is started.
+  const [funding, detail, rules] = await Promise.all([
+    apiGet<{ item: Funding; history: HistoryEntry[] }>(`/funding/${fid}`),
+    step === 3 || step === 5
+      ? apiGet<{ item: Funding; history: Histories }>(`/campaigns/${fid}`).catch((e) => {
+          if (e instanceof ApiError && e.status === 409) return null;
+          throw e;
+        })
+      : null,
+    step === 4 ? apiGet<ProgrammeSettings>('/settings') : null,
+  ]);
+  const item = funding.item;
+  const histories: Histories | null = detail?.history ?? null;
   if (!stepAllowed(item, step)) redirect(`/campaigns/${fid}`);
 
   return (
@@ -53,18 +59,18 @@ export default async function CampaignStepPage({ params }: { params: Promise<{ f
         title={item.title}
         sub={`${item.code} · ${quarterLabel(item.quarter)} · ${item.type} · ${item.partner.name}`}
         action={
-          <a className="btn secondary" href={user.role === 'PARTNER' ? '/campaigns' : '/funding'}>
+          <Link className="btn secondary" href={user.role === 'PARTNER' ? '/campaigns' : '/funding'}>
             All campaigns
-          </a>
+          </Link>
         }
       />
       <nav className="journey-rail" aria-label="Campaign steps">
         {LABELS.map((label, i) =>
           stepAllowed(item, i + 1) ? (
-            <a key={label} href={`/campaigns/${fid}/${i + 1}`} className={step === i + 1 ? 'current' : ''} aria-current={step === i + 1 ? 'step' : undefined}>
+            <Link key={label} href={`/campaigns/${fid}/${i + 1}`} className={step === i + 1 ? 'current' : ''} aria-current={step === i + 1 ? 'step' : undefined}>
               <span>0{i + 1}</span>
               {label}
-            </a>
+            </Link>
           ) : (
             <span key={label} className="disabled">
               <span>0{i + 1}</span>
@@ -76,7 +82,7 @@ export default async function CampaignStepPage({ params }: { params: Promise<{ f
       {step === 1 && <StepRequest item={item} />}
       {step === 2 && <StepApproval item={item} user={user} history={funding.history} />}
       {step === 3 && <StepAssets item={item} user={user} history={histories?.assets ?? []} />}
-      {step === 4 && <StepPerformance item={item} user={user} />}
+      {step === 4 && rules && <StepPerformance item={item} user={user} rules={rules} />}
       {step === 5 && <StepClaim item={item} user={user} history={histories?.claim ?? []} />}
     </>
   );
@@ -96,9 +102,9 @@ function StepRequest({ item }: { item: Funding }) {
       <Kv k="Requested" v={money(item.amount)} />
       <Kv k="Status" v={<Badge>{item.status}</Badge>} />
       <p className="muted spaced">{item.objective}</p>
-      <a className="btn secondary" href={`/funding/${item.id}`}>
+      <Link className="btn secondary" href={`/funding/${item.id}`}>
         Open funding request →
-      </a>
+      </Link>
     </section>
   );
 }
@@ -116,13 +122,13 @@ function StepApproval({ item, user, history }: { item: Funding; user: User; hist
         {item.feedback && <Note>Reviewer feedback: {item.feedback}</Note>}
         <div className="actions spaced">
           {item.status === 'Approved' ? (
-            <a className="btn" href={`/campaigns/${item.id}/3`}>
+            <Link className="btn" href={`/campaigns/${item.id}/3`}>
               Continue to run campaign →
-            </a>
+            </Link>
           ) : (
-            <a className="btn secondary" href={`/funding/${item.id}`}>
+            <Link className="btn secondary" href={`/funding/${item.id}`}>
               View funding request
-            </a>
+            </Link>
           )}
         </div>
         {user.role === 'REVIEWER' && item.status === 'Submitted' && (
@@ -202,9 +208,9 @@ function StepAssets({ item, user, history }: { item: Funding; user: User; histor
               </ActionForm>
             )}
             {c.assetsApproved && (
-              <a className="btn" href={`/campaigns/${item.id}/4`}>
+              <Link className="btn" href={`/campaigns/${item.id}/4`}>
                 Continue to performance & POE →
-              </a>
+              </Link>
             )}
           </div>
           {!isPartner && c.assetStatus === 'Submitted' && (
@@ -223,8 +229,7 @@ function StepAssets({ item, user, history }: { item: Funding; user: User; histor
 
 // ---------- 04 Performance & POE ----------
 
-async function StepPerformance({ item, user }: { item: Funding; user: User }) {
-  const rules = await apiGet<ProgrammeSettings>('/settings');
+function StepPerformance({ item, user, rules }: { item: Funding; user: User; rules: ProgrammeSettings }) {
   const isPartner = user.role === 'PARTNER';
   const c = item.campaign!;
   const locked = !isPartner || LOCKED.includes(c.claim?.status ?? '');
@@ -313,9 +318,9 @@ async function StepPerformance({ item, user }: { item: Funding; user: User }) {
           <a className="btn secondary" href={`/download/campaigns/${item.id}/export?type=zip`}>
             Download POE ZIP
           </a>
-          <a className="btn" href={`/campaigns/${item.id}/5`}>
+          <Link className="btn" href={`/campaigns/${item.id}/5`}>
             Continue to claim →
-          </a>
+          </Link>
         </div>
       </section>
     </>
@@ -413,9 +418,9 @@ function StepClaim({ item, user, history }: { item: Funding; user: User; history
           )}
           {!isPartner && claim.status !== 'Submitted' && !(claim.status === 'Approved' && !claim.paidAt) && <p className="muted">Only a submitted claim can be reviewed.</p>}
           <hr className="rule" />
-          <a className="btn secondary" href={`/campaigns/${item.id}/4`}>
+          <Link className="btn secondary" href={`/campaigns/${item.id}/4`}>
             Review performance & evidence
-          </a>
+          </Link>
         </section>
         <History entries={history} title="Claim history" />
       </div>

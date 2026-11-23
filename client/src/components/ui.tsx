@@ -1,3 +1,5 @@
+import Form from 'next/form';
+import Link from 'next/link';
 /** Presentational building blocks. Server components: no client JavaScript. */
 import type { ReactNode } from 'react';
 import { QUARTERS, fileSize, quarterLabel } from '@/lib/format';
@@ -18,16 +20,15 @@ export function Badge({ children }: { children: string }) {
   return <span className={`badge ${tone}`}>{t}</span>;
 }
 
-const EYEBROW: Record<Role, string> = { PARTNER: 'Partner workspace', REVIEWER: 'Programme workspace', ADMIN: 'Platform administration' };
-
-export function PageHead({ title, sub, action, role, eyebrow }: { title: ReactNode; sub?: ReactNode; action?: ReactNode; role?: Role; eyebrow?: string }) {
+/**
+ * Page title row. The page title and description are shown in the white top bar
+ * (components/TopbarTitle.tsx), so here only the page's action buttons are rendered.
+ * title/sub/role/eyebrow are kept as props so pages can still pass them (and for screen readers).
+ */
+export function PageHead({ title, action }: { title: ReactNode; sub?: ReactNode; action?: ReactNode; role?: Role; eyebrow?: string }) {
   return (
     <div className="pagetop">
-      <div>
-        <p className="eyebrow">{eyebrow ?? (role ? EYEBROW[role] : '')}</p>
-        <h1>{title}</h1>
-        {sub && <p className="sub">{sub}</p>}
-      </div>
+      <h1 className="visually-hidden">{title}</h1>
       {action && <div className="pagetop-action">{action}</div>}
     </div>
   );
@@ -36,11 +37,11 @@ export function PageHead({ title, sub, action, role, eyebrow }: { title: ReactNo
 export function Crumbs({ items }: { items: (string | [string, string])[] }) {
   return (
     <div className="breadcrumb">
-      <a href="/">Home</a>
+      <Link href="/">Home</Link>
       {items.map((i, n) => (
         <span key={n}>
           {' / '}
-          {Array.isArray(i) ? <a href={i[1]}>{i[0]}</a> : i}
+          {Array.isArray(i) ? <Link href={i[1]}>{i[0]}</Link> : i}
         </span>
       ))}
     </div>
@@ -65,9 +66,9 @@ export function Metric({ label, value, note, href }: { label: string; value: Rea
     </>
   );
   return href ? (
-    <a href={href} className="metric link">
+    <Link href={href} className="metric link">
       {body}
-    </a>
+    </Link>
   ) : (
     <div className="metric">{body}</div>
   );
@@ -103,11 +104,11 @@ export function Flash({ message }: { message?: string }) {
 
 /**
  * GET filter form: changing a select reloads the page with new query parameters.
- * Each filter change is a normal page request (multi-page app).
+ * Uses next/form so the new results load without a full page reload.
  */
 export function FilterBar({ action, children, quarter }: { action: string; children?: ReactNode; quarter?: string }) {
   return (
-    <form method="get" action={action} className="filters">
+    <Form action={action} className="filters">
       {children}
       {quarter !== undefined && (
         <div className="inline-field">
@@ -118,7 +119,7 @@ export function FilterBar({ action, children, quarter }: { action: string; child
       <noscript>
         <button className="btn secondary">Apply</button>
       </noscript>
-    </form>
+    </Form>
   );
 }
 

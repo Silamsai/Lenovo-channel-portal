@@ -6,6 +6,18 @@ import { loadFunding, publicFunding } from '../services/serialize';
 
 export const reviewRoutes = new Router();
 
+/** Number of items waiting for a decision (for the menu badge): one small query. */
+reviewRoutes.get('/count', auth, role('REVIEWER'), async () => {
+  const r = await db.one(
+    `SELECT (SELECT COUNT(*) FROM funding_requests WHERE status = 'Submitted')
+          + (SELECT COUNT(*) FROM campaigns WHERE asset_status = 'Submitted')
+          + (SELECT COUNT(*) FROM claims WHERE status = 'Submitted')
+          + (SELECT COUNT(*) FROM benefit_requests WHERE status = 'Pending')
+          + (SELECT COUNT(*) FROM points_entries WHERE status = 'Pending') AS count`,
+  );
+  return { count: Number(r.count) };
+});
+
 /** Everything waiting for a programme decision. */
 reviewRoutes.get('/queue', auth, role('REVIEWER'), async () => {
   const [funding, assets, claims, payments, benefits, points] = await Promise.all([

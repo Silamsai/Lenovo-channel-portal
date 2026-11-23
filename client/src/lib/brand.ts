@@ -15,6 +15,4 @@ export const brand = {
   loginHeadline: ['Great partnerships.', 'Measurable impact.'],
   loginTagline: 'One workspace for funding, campaigns, asset approvals and claims.',
   journey: ['Plan', 'Execute', 'Grow'],
-  /** Show the demo login box on the sign-in page. Turn off for real deployments. */
-  showDemoLogins: true,
 };
