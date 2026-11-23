@@ -4,16 +4,15 @@ node_modules/
 # Build output
 dist/
 build/
+client/.next/
+client/out/
+client/next-env.d.ts
 *.tsbuildinfo
 
 # Environment and secrets
 .env
 .env.*
 !.env.example
-
-# Database (SQLite dev database)
-backend/prisma/*.db
-backend/prisma/*.db-journal
 
 # Uploaded files (evidence, campaign assets)
 backend/uploads/*

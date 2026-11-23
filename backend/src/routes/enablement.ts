@@ -1,33 +1,27 @@
-import { Router } from 'express';
 import { z } from 'zod';
-import { prisma } from '../db';
-import { badRequest, notFound } from '../middleware/errors';
+import { db } from '../db';
+import { auth } from '../auth';
+import { badRequest, notFound } from '../lib/http';
+import { Router } from '../lib/router';
 
-export const enablementRouter = Router();
+export const enablementRoutes = new Router();
 
-enablementRouter.get('/', async (req, res) => {
-  const modules = await prisma.learningModule.findMany({ orderBy: { order: 'asc' } });
-  const done = await prisma.learningProgress.findMany({ where: { userId: req.user!.id } });
-  const doneIds = new Set(done.map((d) => d.moduleId));
-  res.json(
-    modules.map(({ answer: _answer, ...m }) => ({
-      ...m,
-      checks: JSON.parse(m.checks) as string[],
-      options: JSON.parse(m.options) as { value: string; label: string }[],
-      completed: doneIds.has(m.id),
-    })),
-  );
-});
+enablementRoutes.get('/', auth, (ctx) =>
+  db.many(
+    `SELECT m.id, m.sort_order AS "order", m.title, m.minutes, m.body, m.checks, m.question, m.options,
+            (p.user_id IS NOT NULL) AS completed
+       FROM learning_modules m
+       LEFT JOIN learning_progress p ON p.module_id = m.id AND p.user_id = $1
+      ORDER BY m.sort_order`,
+    [ctx.me.id],
+  ),
+);
 
-enablementRouter.post('/:id/complete', async (req, res) => {
-  const { answer } = z.object({ answer: z.string() }).parse(req.body);
-  const mod = await prisma.learningModule.findUnique({ where: { id: Number(req.params.id) } });
+enablementRoutes.post('/:id/complete', auth, async (ctx) => {
+  const { answer } = z.object({ answer: z.string() }).parse(await ctx.json());
+  const mod = await db.maybe('SELECT id, answer, hint FROM learning_modules WHERE id = $1', [ctx.param('id')]);
   if (!mod) throw notFound('Module not found.');
   if (answer !== mod.answer) throw badRequest(mod.hint);
-  await prisma.learningProgress.upsert({
-    where: { userId_moduleId: { userId: req.user!.id, moduleId: mod.id } },
-    create: { userId: req.user!.id, moduleId: mod.id },
-    update: {},
-  });
-  res.json({ ok: true });
+  await db.run('INSERT INTO learning_progress (user_id, module_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [ctx.me.id, mod.id]);
+  return { ok: true };
 });

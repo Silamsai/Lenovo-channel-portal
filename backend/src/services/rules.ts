@@ -1,13 +1,11 @@
 /**
  * Every programme rule lives here, so they are easy to find and change.
- * The client mirrors some of these for instant feedback, but the server is
- * the authority: requests that break a rule are refused.
+ * Limits come from the admin-managed settings (services/settings.ts).
+ * The client pre-checks some of these for quick feedback; the backend is the authority.
  */
+import { settings } from './settings';
 
-export const MAX_CONTRIBUTION_SHARE = 0.5; // up to 50% of eligible cost / actual spend
-export const MAX_REQUEST_GBP = 15000;
-export const POINTS_PER_APPROVED_CLAIM = 250;
-export const POINTS_PER_ACTIVITY = 250;
+const share = () => settings().contributionPercent / 100;
 
 export const CAMPAIGN_TYPES = ['Webinar', 'Customer event', 'Email campaign', 'Digital campaign'] as const;
 export type CampaignType = (typeof CAMPAIGN_TYPES)[number];
@@ -36,15 +34,14 @@ export const quarterOf = (date: string) =>
 
 export const round2 = (n: number) => Math.round(n * 100) / 100;
 
-const gbp = (n: number) => '£' + n.toLocaleString('en-GB');
+export const gbp = (n: number) => '£' + n.toLocaleString('en-GB', { maximumFractionDigits: 2 });
 
 export function fundingProblem(input: { quarter: string; date: string; eligibleCost: number; amount: number }, available: number): string {
   if (quarterOf(input.date) !== input.quarter) return 'The execution date must fall within the selected funding quarter.';
   if (!(input.eligibleCost > 0)) return 'Eligible cost must be greater than zero.';
   if (!(input.amount > 0)) return 'Requested funding must be greater than zero.';
-  if (input.amount > input.eligibleCost * MAX_CONTRIBUTION_SHARE)
-    return `Requested funding must be at most ${MAX_CONTRIBUTION_SHARE * 100}% of eligible cost.`;
-  if (input.amount > MAX_REQUEST_GBP) return `Requested funding must be at most ${gbp(MAX_REQUEST_GBP)}.`;
+  if (input.amount > input.eligibleCost * share()) return `Requested funding must be at most ${settings().contributionPercent}% of eligible cost.`;
+  if (input.amount > settings().maxRequestGbp) return `Requested funding must be at most ${gbp(settings().maxRequestGbp)}.`;
   if (input.amount > available) return `Requested funding exceeds the available budget of ${gbp(available)}.`;
   return '';
 }
@@ -67,6 +64,5 @@ export function resultsProblem(type: string, values: Record<string, unknown>, sp
   return '';
 }
 
-/** Maximum claim: 50% of actual eligible spend, capped at the approved allocation. */
-export const claimLimit = (approved: number, spend: number | null | undefined) =>
-  round2(Math.min(approved, Number(spend || 0) * MAX_CONTRIBUTION_SHARE));
+/** Maximum claim: the contribution share of actual eligible spend, capped at the approved allocation. */
+export const claimLimit = (approved: number, spend: number | null | undefined) => round2(Math.min(approved, Number(spend || 0) * share()));
