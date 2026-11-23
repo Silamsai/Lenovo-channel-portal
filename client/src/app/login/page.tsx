@@ -5,6 +5,7 @@ import { brand } from '@/lib/brand';
 import { getUser, homeFor } from '@/lib/session';
 import { ActionForm, Submit } from '@/components/forms';
 import { PasswordInput } from '@/components/PasswordInput';
+import { DemoCredentials } from '@/components/DemoCredentials';
 
 export const metadata: Metadata = { title: 'Sign in' };
 
@@ -50,32 +51,7 @@ export default async function LoginPage() {
             </div>
           </ActionForm>
 
-          {brand.showDemoLogins && (
-            <details className="login-credentials">
-              <summary>Demo login details</summary>
-              <p>
-                <strong>Partner</strong>
-                <br />
-                partner@demo.example
-                <br />
-                PartnerDemo26!
-              </p>
-              <p>
-                <strong>Reviewer</strong>
-                <br />
-                reviewer@demo.example
-                <br />
-                ReviewerDemo26!
-              </p>
-              <p>
-                <strong>Platform admin</strong>
-                <br />
-                admin@lenovo.com
-                <br />
-                lenovo@2026
-              </p>
-            </details>
-          )}
+          {brand.showDemoLogins && <DemoCredentials />}
         </div>
       </section>
     </div>
