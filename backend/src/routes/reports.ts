@@ -1,34 +1,39 @@
-import { Router, type Request } from 'express';
-import { prisma } from '../db';
-import { fundingInclude, serializeFunding } from '../services/serialize';
+import { db } from '../db';
+import { auth } from '../auth';
+import { sendDownload } from '../lib/http';
+import { Router, type Ctx } from '../lib/router';
 import { round2 } from '../services/rules';
+import { loadFunding } from '../services/serialize';
 
-export const reportsRouter = Router();
+export const reportRoutes = new Router();
 
-async function buildReport(req: Request) {
-  const user = req.user!;
-  const quarter = typeof req.query.quarter === 'string' && req.query.quarter !== 'all' ? req.query.quarter : undefined;
-  const partnerFilter = user.role === 'PARTNER' ? { partnerId: user.partnerId! } : {};
-  const rows = (
-    await prisma.fundingRequest.findMany({
-      where: { ...partnerFilter, ...(quarter ? { quarter } : {}), status: { not: 'Draft' } },
-      include: fundingInclude,
-      orderBy: { date: 'asc' },
-    })
-  ).map(serializeFunding);
-
-  const exportUsers = user.role === 'PARTNER' ? (await prisma.user.findMany({ where: { partnerId: user.partnerId! } })).map((u) => u.id) : undefined;
-  const exports = await prisma.auditLog.count({
-    where: { entity: 'kit', action: 'Exported', ...(exportUsers ? { userId: { in: exportUsers } } : {}) },
-  });
-
+async function buildReport(ctx: Ctx) {
+  const user = ctx.me;
+  const quarter = ctx.query.get('quarter');
+  const conditions = [`f.status <> 'Draft'`];
+  const params: unknown[] = [];
+  if (user.role === 'PARTNER') {
+    params.push(user.partnerId);
+    conditions.push(`f.partner_id = $${params.length}`);
+  }
+  if (quarter && quarter !== 'all') {
+    params.push(quarter);
+    conditions.push(`f.quarter = $${params.length}`);
+  }
+  const rows = await loadFunding(conditions.join(' AND '), params, 'f.date, f.id');
+  const exports = await db.one(
+    user.role === 'PARTNER'
+      ? `SELECT COUNT(*)::int AS n FROM audit_log a JOIN users u ON u.id = a.user_id WHERE a.entity = 'kit' AND a.action = 'Exported' AND u.partner_id = $1`
+      : `SELECT COUNT(*)::int AS n FROM audit_log WHERE entity = 'kit' AND action = 'Exported'`,
+    user.role === 'PARTNER' ? [user.partnerId] : [],
+  );
   const claims = rows.map((r) => r.campaign?.claim).filter((c): c is NonNullable<typeof c> => !!c);
   const sum = (xs: (number | null)[]) => round2(xs.reduce<number>((n, x) => n + (x ?? 0), 0));
   return {
     totals: {
       requested: sum(rows.map((r) => r.amount)),
       approved: sum(rows.filter((r) => r.status === 'Approved').map((r) => r.amount)),
-      kitExports: exports,
+      kitExports: exports.n as number,
       launched: rows.filter((r) => r.campaign).length,
       completed: rows.filter((r) => r.campaign?.completedAt).length,
       claimsApproved: sum(claims.filter((c) => c.status === 'Approved').map((c) => c.amount)),
@@ -59,12 +64,10 @@ async function buildReport(req: Request) {
   };
 }
 
-reportsRouter.get('/', async (req, res) => {
-  res.json(await buildReport(req));
-});
+reportRoutes.get('/', auth, buildReport);
 
-reportsRouter.get('/export.csv', async (req, res) => {
-  const report = await buildReport(req);
+reportRoutes.get('/export.csv', auth, async (ctx) => {
+  const report = await buildReport(ctx);
   const cell = (v: unknown) => {
     const s = String(v ?? '');
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -85,7 +88,6 @@ reportsRouter.get('/export.csv', async (req, res) => {
       c.metrics.map((m) => `${m.label}: ${m.value ?? '-'}`).join('; '),
     ]),
   ];
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', 'attachment; filename="channel-report.csv"');
-  res.send(lines.map((l) => l.map(cell).join(',')).join('\n'));
+  sendDownload(ctx.res, lines.map((l) => l.map(cell).join(',')).join('\n'), 'channel-report.csv', 'text/csv; charset=utf-8');
+  ctx.sent = true;
 });

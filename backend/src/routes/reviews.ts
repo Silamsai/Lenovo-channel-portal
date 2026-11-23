@@ -1,37 +1,35 @@
-import { Router } from 'express';
-import { prisma } from '../db';
-import { requireRole } from '../middleware/auth';
+import { db } from '../db';
+import { auth, role } from '../auth';
+import { Router } from '../lib/router';
 import { partnerBudget } from '../services/budget';
-import { fundingInclude, serializeFunding } from '../services/serialize';
+import { loadFunding, publicFunding } from '../services/serialize';
 
-export const reviewsRouter = Router();
+export const reviewRoutes = new Router();
 
 /** Everything waiting for a programme decision. */
-reviewsRouter.get('/queue', requireRole('REVIEWER'), async (_req, res) => {
+reviewRoutes.get('/queue', auth, role('REVIEWER'), async () => {
   const [funding, assets, claims, payments, benefits, points] = await Promise.all([
-    prisma.fundingRequest.findMany({ where: { status: 'Submitted' }, include: fundingInclude, orderBy: { submittedAt: 'asc' } }),
-    prisma.fundingRequest.findMany({ where: { campaign: { assetStatus: 'Submitted' } }, include: fundingInclude }),
-    prisma.fundingRequest.findMany({ where: { campaign: { claim: { status: 'Submitted' } } }, include: fundingInclude }),
-    prisma.fundingRequest.findMany({ where: { campaign: { claim: { status: 'Approved', paidAt: null } } }, include: fundingInclude }),
-    prisma.benefitRequest.findMany({ where: { status: 'Pending' }, include: { partner: true, benefit: true }, orderBy: { createdAt: 'asc' } }),
-    prisma.pointsEntry.findMany({ where: { status: 'Pending' }, include: { partner: true, reward: true }, orderBy: { createdAt: 'asc' } }),
-  ]);
-  res.json({
-    funding: await Promise.all(
-      funding.map(async (f) => ({ ...serializeFunding(f), available: (await partnerBudget(f.partnerId, f.id)).available })),
+    loadFunding(`f.status = 'Submitted'`, [], 'f.submitted_at'),
+    loadFunding(`EXISTS (SELECT 1 FROM campaigns c WHERE c.funding_id = f.id AND c.asset_status = 'Submitted')`),
+    loadFunding(`EXISTS (SELECT 1 FROM campaigns c JOIN claims cl ON cl.campaign_id = c.id WHERE c.funding_id = f.id AND cl.status = 'Submitted')`),
+    loadFunding(`EXISTS (SELECT 1 FROM campaigns c JOIN claims cl ON cl.campaign_id = c.id WHERE c.funding_id = f.id AND cl.status = 'Approved' AND cl.paid_at IS NULL)`),
+    db.many(
+      `SELECT r.id, p.name AS partner, b.name AS benefit, r.note, r.created_at
+         FROM benefit_requests r JOIN partners p ON p.id = r.partner_id JOIN benefit_items b ON b.id = r.benefit_id
+        WHERE r.status = 'Pending' ORDER BY r.created_at`,
     ),
-    assets: assets.map(serializeFunding),
-    claims: claims.map(serializeFunding),
-    payments: payments.map(serializeFunding),
-    benefits: benefits.map((b) => ({ id: b.id, partner: b.partner.name, benefit: b.benefit.name, note: b.note, createdAt: b.createdAt })),
-    points: points.map((p) => ({
-      id: p.id,
-      partner: p.partner.name,
-      kind: p.kind,
-      points: p.points,
-      reason: p.reason,
-      evidence: p.evidence,
-      createdAt: p.createdAt,
-    })),
-  });
+    db.many(
+      `SELECT e.id, p.name AS partner, e.kind, e.points, e.reason, e.evidence, e.created_at
+         FROM points_entries e JOIN partners p ON p.id = e.partner_id
+        WHERE e.status = 'Pending' ORDER BY e.created_at`,
+    ),
+  ]);
+  return {
+    funding: await Promise.all(funding.map(async (f) => ({ ...publicFunding(f), available: (await partnerBudget(f.partnerId, f.id)).available }))),
+    assets: assets.map(publicFunding),
+    claims: claims.map(publicFunding),
+    payments: payments.map(publicFunding),
+    benefits,
+    points,
+  };
 });

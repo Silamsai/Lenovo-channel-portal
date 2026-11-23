@@ -21,7 +21,9 @@ export const env = {
   isProd,
   port: Number(process.env.PORT || 4000),
   jwtSecret: process.env.JWT_SECRET || 'dev-only-secret-change-me',
-  clientOrigin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+  /** PostgreSQL connection string (Neon). Required. */
+  databaseUrl: process.env.DATABASE_URL || '',
   uploadDir: path.resolve(__dirname, '../uploads'),
-  clientDist: path.resolve(__dirname, '../../client/dist'),
+  /** Origins allowed to call the API from a browser (the Next.js app calls it server-side). */
+  allowedOrigins: (process.env.CLIENT_ORIGIN || 'http://localhost:3000').split(',').map((s) => s.trim()),
 };
