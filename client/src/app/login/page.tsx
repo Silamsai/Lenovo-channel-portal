@@ -14,7 +14,7 @@ export default async function LoginPage() {
   return (
     <div className="login-layout">
       <section className="login-brand">
-        <b className="login-logo">{brand.name}</b>
+        <img className="login-logo" src={brand.logo} alt={brand.name} />
         <div>
           <p className="eyebrow light">{brand.product}</p>
           <h1>
@@ -50,7 +50,7 @@ export default async function LoginPage() {
           </ActionForm>
 
           {brand.showDemoLogins && (
-            <details className="login-credentials" open>
+            <details className="login-credentials">
               <summary>Demo login details</summary>
               <p>
                 <strong>Partner</strong>
