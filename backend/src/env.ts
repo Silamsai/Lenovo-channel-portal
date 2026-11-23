@@ -1,5 +1,10 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import path from 'path';
+
+// Explicitly load backend/.env, then fall back to repo root / cwd .env
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config();
 
 const isProd = process.env.NODE_ENV === 'production';
 

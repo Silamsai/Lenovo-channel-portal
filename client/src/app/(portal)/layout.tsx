@@ -23,7 +23,7 @@ export default async function PortalLayout({ children }: { children: React.React
     <div className="shell">
       <header className="topbar">
         <a href={homeFor(user.role)} className="brand">
-          <b className="wordmark">{brand.name}</b>
+          <img className="wordmark-logo" src={brand.logo} alt={brand.name} />
           <span className="brand-product">{brand.product}</span>
         </a>
         <NotificationBell />
