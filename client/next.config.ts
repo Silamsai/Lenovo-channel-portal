@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
     },
   },
   poweredByHeader: false,
+  // Don't create client/AGENTS.md (notes for AI coding assistants) on `next dev`.
+  agentRules: false,
 };
 
 export default nextConfig;

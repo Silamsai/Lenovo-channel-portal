@@ -4,6 +4,7 @@ import { login } from '@/lib/actions';
 import { brand } from '@/lib/brand';
 import { getUser, homeFor } from '@/lib/session';
 import { ActionForm, Submit } from '@/components/forms';
+import { PasswordInput } from '@/components/PasswordInput';
 
 export const metadata: Metadata = { title: 'Sign in' };
 
@@ -42,7 +43,7 @@ export default async function LoginPage() {
             </div>
             <div className="field">
               <label htmlFor="login-password">Password</label>
-              <input id="login-password" name="password" type="password" autoComplete="current-password" required />
+              <PasswordInput id="login-password" name="password" />
             </div>
             <div className="login-submit">
               <Submit>Sign in →</Submit>
