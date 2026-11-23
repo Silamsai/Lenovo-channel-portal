@@ -5,6 +5,7 @@ import { brand } from '@/lib/brand';
 import { getUser, homeFor } from '@/lib/session';
 import { ActionForm, Submit } from '@/components/forms';
 import { PasswordInput } from '@/components/PasswordInput';
+import { DemoCredentials } from '@/components/DemoCredentials';
 
 export const metadata: Metadata = { title: 'Sign in' };
 
@@ -49,7 +50,9 @@ export default async function LoginPage() {
               <Submit>Sign in →</Submit>
             </div>
           </ActionForm>
+
           <p className="muted small spaced">No account yet? Ask your programme administrator to create one for you.</p>
+ dev
         </div>
       </section>
     </div>
