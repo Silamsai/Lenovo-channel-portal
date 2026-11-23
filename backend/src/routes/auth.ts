@@ -5,6 +5,7 @@ import { COOKIE, SESSION_SECONDS, auth, signToken } from '../auth';
 import { env } from '../env';
 import { HttpError } from '../lib/http';
 import { Router, type Ctx } from '../lib/router';
+import { audit } from '../services/audit';
 
 export const authRoutes = new Router();
 
@@ -70,3 +71,20 @@ authRoutes.post('/logout', (ctx) => {
 });
 
 authRoutes.get('/me', auth, (ctx) => publicUser(ctx.me.id));
+
+const PasswordBody = z.object({
+  currentPassword: z.string().min(1, 'Enter your current password.').max(200),
+  newPassword: z.string().min(8, 'New password must be at least 8 characters.').max(200),
+});
+
+/** Signed-in users change their own password (current password required). */
+authRoutes.post('/password', auth, async (ctx) => {
+  rateLimit(ctx);
+  const body = PasswordBody.parse(await ctx.json());
+  const user = await db.one('SELECT password_hash FROM users WHERE id = $1', [ctx.me.id]);
+  if (!(await bcrypt.compare(body.currentPassword, user.passwordHash))) throw new HttpError(400, 'Current password is not correct.');
+  if (body.currentPassword === body.newPassword) throw new HttpError(400, 'Choose a new password that is different from the current one.');
+  await db.run('UPDATE users SET password_hash = $1 WHERE id = $2', [await bcrypt.hash(body.newPassword, 10), ctx.me.id]);
+  await audit({ userId: ctx.me.id, entity: 'user', entityId: ctx.me.id, action: 'Password changed', note: ctx.me.email });
+  return { ok: true };
+});
