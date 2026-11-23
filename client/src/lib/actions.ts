@@ -65,6 +65,20 @@ export async function logout() {
   redirect('/login');
 }
 
+/** Signed-in user changes their own password. */
+export async function changePassword(_prev: FormState, fd: FormData): Promise<FormState> {
+  const currentPassword = String(fd.get('currentPassword') ?? '');
+  const newPassword = String(fd.get('newPassword') ?? '');
+  if (newPassword !== String(fd.get('confirmPassword') ?? '')) return { error: 'The new passwords do not match.', at: Date.now() };
+  if (newPassword.length < 8) return { error: 'New password must be at least 8 characters.', at: Date.now() };
+  try {
+    await apiSend('POST', '/auth/password', { currentPassword, newPassword });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Could not change the password.', at: Date.now() };
+  }
+  return { ok: 'Password changed. Use the new password next time you sign in.', at: Date.now() };
+}
+
 export async function markNotificationsRead() {
   await apiSend('POST', '/notifications/read').catch(() => undefined);
   revalidatePath('/', 'layout');

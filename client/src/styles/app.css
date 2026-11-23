@@ -571,3 +571,13 @@ form[aria-busy='true'] { opacity: 0.7; }
 
 /* Inline hint shown in place of an empty dropdown */
 .empty-hint { background: var(--orange-bg); color: var(--ink-soft); border-radius: var(--radius); padding: 9px 12px; font-size: 13px; line-height: 1.6; }
+
+/* Edit-in-place panels (profile, password): read-only until the pencil icon is clicked. */
+.icon-button { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); }
+.icon-button:hover { border-color: var(--brand); color: var(--brand-strong); }
+.icon-button svg { width: 15px; height: 15px; }
+.readonly-fields:disabled input, .readonly-fields:disabled select, .readonly-fields:disabled textarea {
+  background: transparent; border-color: transparent; padding-left: 0; color: var(--ink); resize: none; appearance: none; opacity: 1;
+}
+.readonly-fields:disabled textarea { min-height: 0; height: auto; }
+.panel.is-editing { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(226, 35, 26, 0.08); }

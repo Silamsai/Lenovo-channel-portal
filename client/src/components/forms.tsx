@@ -5,7 +5,7 @@
  * forms that post to Server Actions and show the result, submit buttons,
  * file pickers that upload on choose, and selects that submit their GET form.
  */
-import { startTransition, useActionState, useRef, type ReactNode } from 'react';
+import { startTransition, useActionState, useEffect, useRef, type ReactNode } from 'react';
 import { useFormStatus } from 'react-dom';
 import type { FormState } from '@/lib/actions';
 
@@ -22,6 +22,8 @@ export function ActionForm({
   className,
   confirm,
   inline,
+  onSuccess,
+  resetOnSuccess,
 }: {
   action: Action;
   children: ReactNode;
@@ -30,9 +32,20 @@ export function ActionForm({
   confirm?: string;
   /** Show messages next to the controls instead of under them. */
   inline?: boolean;
+  /** Called after the server reports success (e.g. to leave edit mode). */
+  onSuccess?: () => void;
+  /** Clear the fields after success (e.g. password forms). */
+  resetOnSuccess?: boolean;
 }) {
   const [state, dispatch, pending] = useActionState(action, {});
   const ref = useRef<HTMLFormElement>(null);
+  const onSuccessRef = useRef(onSuccess);
+  onSuccessRef.current = onSuccess;
+  useEffect(() => {
+    if (!state.ok) return;
+    if (resetOnSuccess) ref.current?.reset();
+    onSuccessRef.current?.();
+  }, [state.ok, state.at, resetOnSuccess]);
   return (
     <form
       ref={ref}
