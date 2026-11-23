@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiGet } from '@/lib/api';
 import { decideFunding, saveFunding } from '@/lib/actions';
 import { CAMPAIGN_TYPES, QUARTERS, dateLabel, money, quarterLabel } from '@/lib/format';
@@ -148,9 +149,9 @@ export async function RequestPage({ id }: { id: number | null }) {
             {budget && <Kv k="Available budget" v={money(budget.available)} />}
             <hr className="rule" />
             {item?.status === 'Approved' && (
-              <a className="btn block" href={`/campaigns/${item.id}/3`}>
+              <Link className="btn block" href={`/campaigns/${item.id}/3`}>
                 Continue to campaign →
-              </a>
+              </Link>
             )}
             {user.role === 'REVIEWER' && item?.status === 'Submitted' && (
               <>

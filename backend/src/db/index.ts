@@ -48,12 +48,27 @@ function executor(q: Queryable): Executor {
   };
 }
 
+/**
+ * Neon/Supabase strings use sslmode=require. Newer pg versions warn that it will mean
+ * verify-full; use verify-full explicitly (same behaviour, valid public certificates).
+ */
+function normaliseSsl(url: string) {
+  return url.replace(/([?&])sslmode=(require|prefer|verify-ca)(?=&|$)/, '$1sslmode=verify-full');
+}
+
 let pool: pg.Pool | undefined;
 function getPool() {
   if (!env.databaseUrl) {
     throw new Error('DATABASE_URL is not set. Put your PostgreSQL (Neon) connection string in backend/.env.');
   }
-  pool ??= new pg.Pool({ connectionString: env.databaseUrl, max: 10 });
+  pool ??= new pg.Pool({
+    connectionString: normaliseSsl(env.databaseUrl),
+    max: 10,
+    // Opening a TLS connection to Neon costs ~0.5 s, so keep idle connections for 5 minutes
+    // instead of pg's default 10 seconds; otherwise every page after a short pause reconnects.
+    idleTimeoutMillis: 5 * 60 * 1000,
+    keepAlive: true,
+  });
   return pool;
 }
 

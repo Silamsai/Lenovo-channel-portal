@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiGet } from '@/lib/api';
 import { createUser } from '@/lib/actions';
 import { requireUser } from '@/lib/session';
@@ -12,7 +13,7 @@ export default async function NewUserPage() {
   return (
     <>
       <div className="breadcrumb">
-        <a href="/admin/users">Users</a> / Add user
+        <Link href="/admin/users">Users</Link> / Add user
       </div>
       <PageHead role={me.role} title="Add a user" sub="Create a partner, reviewer or admin account with a temporary password." />
       <section className="panel narrow">

@@ -60,8 +60,10 @@ fundingRoutes.get('/', auth, async (ctx) => {
     params.push(quarter);
     conditions.push(`f.quarter = $${params.length}`);
   }
-  const items = await loadFunding(conditions.join(' AND '), params);
-  const budget = user.role === 'PARTNER' ? await partnerBudget(user.partnerId!) : null;
+  const [items, budget] = await Promise.all([
+    loadFunding(conditions.join(' AND '), params),
+    user.role === 'PARTNER' ? partnerBudget(user.partnerId!) : null,
+  ]);
   return { items: items.map(publicFunding), budget };
 });
 
@@ -69,7 +71,8 @@ fundingRoutes.get('/budget', auth, async (ctx) => partnerBudget(ownPartnerId(ctx
 
 fundingRoutes.get('/:id', auth, async (ctx) => {
   const f = await getFunding(ctx.param('id'), ctx.me);
-  return { item: publicFunding(f), budget: await partnerBudget(f.partnerId, f.id), history: await history('funding', f.id) };
+  const [budget, hist] = await Promise.all([partnerBudget(f.partnerId, f.id), history('funding', f.id)]);
+  return { item: publicFunding(f), budget, history: hist };
 });
 
 async function saveFunding(body: z.infer<typeof FundingBody>, partnerId: number, userId: number, existingId?: number) {

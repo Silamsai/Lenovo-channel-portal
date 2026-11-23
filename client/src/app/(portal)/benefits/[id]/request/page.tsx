@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiGet } from '@/lib/api';
 import { requestBenefit } from '@/lib/actions';
@@ -27,9 +28,9 @@ export default async function RequestBenefitPage({ params }: { params: Promise<{
           </div>
           <div className="actions">
             <Submit>Send request →</Submit>
-            <a className="btn secondary" href="/benefits">
+            <Link className="btn secondary" href="/benefits">
               Cancel
-            </a>
+            </Link>
           </div>
         </ActionForm>
       </section>

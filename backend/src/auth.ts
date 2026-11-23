@@ -36,11 +36,25 @@ export const auth: Step = async (ctx) => {
   } catch {
     throw unauthorized('Your session has expired. Please sign in again.');
   }
+  const cached = userCache.get(userId);
+  if (cached && cached.expires > Date.now()) {
+    ctx.user = cached.user;
+    return;
+  }
   const user = await db.maybe('SELECT id, email, name, role, partner_id, active FROM users WHERE id = $1', [userId]);
   if (!user) throw unauthorized();
   if (!user.active) throw unauthorized('This account has been deactivated.');
   ctx.user = { id: user.id, email: user.email, name: user.name, role: user.role, partnerId: user.partnerId };
+  userCache.set(userId, { user: ctx.user, expires: Date.now() + USER_CACHE_MS });
 };
+
+/**
+ * Signed-in users are remembered for 30 seconds so each API call does not query the database
+ * just to check the session. Admin changes to a user clear their entry immediately.
+ */
+const USER_CACHE_MS = 30_000;
+const userCache = new Map<number, { user: AuthUser; expires: number }>();
+export const forgetUser = (userId: number) => userCache.delete(userId);
 
 export const role =
   (...roles: Role[]): Step =>

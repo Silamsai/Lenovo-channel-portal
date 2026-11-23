@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiGet } from '@/lib/api';
 import { dateLabel, money, quarterLabel } from '@/lib/format';
 import { requireUser } from '@/lib/session';
@@ -36,19 +37,19 @@ export async function FundingList({ tab, params }: { tab: 'funding' | 'claims'; 
         sub={tab === 'funding' ? 'Plan quarterly investment and follow every request through to reimbursement.' : 'Track claim readiness, decisions and payment.'}
         action={
           isPartner && (
-            <a className="btn" href="/funding/new">
+            <Link className="btn" href="/funding/new">
               Request funding →
-            </a>
+            </Link>
           )
         }
       />
       <div className="tabs">
-        <a href="/funding" className={tab === 'funding' ? 'on' : ''}>
+        <Link href="/funding" className={tab === 'funding' ? 'on' : ''}>
           Funding requests
-        </a>
-        <a href="/claims" className={tab === 'claims' ? 'on' : ''}>
+        </Link>
+        <Link href="/claims" className={tab === 'claims' ? 'on' : ''}>
           Claims & POE
-        </a>
+        </Link>
       </div>
 
       {list.budget && tab === 'funding' && (
@@ -96,7 +97,7 @@ export async function FundingList({ tab, params }: { tab: 'funding' | 'claims'; 
                       <Badge>{f.status}</Badge>
                     </td>
                     <td>
-                      <a href={f.campaign ? `/campaigns/${f.id}` : `/funding/${f.id}`}>{f.campaign ? 'Open campaign →' : 'View →'}</a>
+                      <Link href={f.campaign ? `/campaigns/${f.id}` : `/funding/${f.id}`}>{f.campaign ? 'Open campaign →' : 'View →'}</Link>
                     </td>
                   </tr>
                 ))}
@@ -148,7 +149,7 @@ export async function FundingList({ tab, params }: { tab: 'funding' | 'claims'; 
                           <Badge>{claim.paidAt ? 'Paid' : claim.status}</Badge>
                         </td>
                         <td>
-                          <a href={`/campaigns/${f.id}/5`}>Open →</a>
+                          <Link href={`/campaigns/${f.id}/5`}>Open →</Link>
                         </td>
                       </tr>
                     );

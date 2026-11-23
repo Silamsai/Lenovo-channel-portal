@@ -50,7 +50,13 @@ campaignRoutes.get('/:fid', auth, async (ctx) => {
   const { f, c, claim } = await getCampaign(ctx);
   return {
     item: publicFunding(f),
-    history: { funding: await history('funding', f.id), assets: await history('assets', c.id), claim: await history('claim', claim.id) },
+    history: Object.fromEntries(
+      await Promise.all([
+        history('funding', f.id).then((h) => ['funding', h] as const),
+        history('assets', c.id).then((h) => ['assets', h] as const),
+        history('claim', claim.id).then((h) => ['claim', h] as const),
+      ]),
+    ),
   };
 });
 

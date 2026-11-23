@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { apiGet } from '@/lib/api';
 import { updatePartner } from '@/lib/actions';
@@ -15,7 +16,7 @@ export default async function EditPartnerPage({ params }: { params: Promise<{ id
   return (
     <>
       <div className="breadcrumb">
-        <a href="/admin/users?tab=partners">Partner organisations</a> / {partner.name}
+        <Link href="/admin/users?tab=partners">Partner organisations</Link> / {partner.name}
       </div>
       <PageHead role={me.role} title={partner.name} sub={`${partner.code} · ${partner.focus}`} action={<Badge>{partner.status}</Badge>} />
       <section className="panel narrow">

@@ -15,14 +15,12 @@ export async function loadFunding(where: string, params: unknown[] = [], orderBy
   );
   if (!rows.length) return [];
   const ids = rows.map((r) => r.id);
-  const campaigns = await db.many('SELECT * FROM campaigns WHERE funding_id = ANY($1::int[])', [ids]);
-  const campaignIds = campaigns.map((c) => c.id);
-  const [files, claims] = campaignIds.length
-    ? await Promise.all([
-        db.many('SELECT * FROM campaign_files WHERE campaign_id = ANY($1::int[]) ORDER BY id', [campaignIds]),
-        db.many('SELECT * FROM claims WHERE campaign_id = ANY($1::int[])', [campaignIds]),
-      ])
-    : [[], []];
+  // Campaigns, their files and claims in parallel (one round trip instead of three).
+  const [campaigns, files, claims] = await Promise.all([
+    db.many('SELECT * FROM campaigns WHERE funding_id = ANY($1::int[])', [ids]),
+    db.many('SELECT cf.* FROM campaign_files cf JOIN campaigns c ON c.id = cf.campaign_id WHERE c.funding_id = ANY($1::int[]) ORDER BY cf.id', [ids]),
+    db.many('SELECT cl.* FROM claims cl JOIN campaigns c ON c.id = cl.campaign_id WHERE c.funding_id = ANY($1::int[])', [ids]),
+  ]);
   return rows.map((f) => {
     const c = campaigns.find((x) => x.fundingId === f.id);
     return serialize(f, c, c ? files.filter((x) => x.campaignId === c.id) : [], c ? claims.find((x) => x.campaignId === c.id) : undefined);

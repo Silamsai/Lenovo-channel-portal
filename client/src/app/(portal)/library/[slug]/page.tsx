@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiGet } from '@/lib/api';
 import { requireUser } from '@/lib/session';
 import type { Customisation, Kit, LearningModule } from '@/lib/types';
@@ -24,9 +25,9 @@ export default async function KitPage({ params }: { params: Promise<{ slug: stri
         sub={kit.description}
         action={
           isPartner && (
-            <a className="btn" href={`/library/${kit.slug}/customise`}>
+            <Link className="btn" href={`/library/${kit.slug}/customise`}>
               {customisation ? 'Edit customisation' : 'Use this campaign'} →
-            </a>
+            </Link>
           )
         }
       />
@@ -55,7 +56,7 @@ export default async function KitPage({ params }: { params: Promise<{ slug: stri
                   <strong>{a.name}</strong>
                   <p>{a.detail}</p>
                 </div>
-                {a.customisable && isPartner ? <a href={`/library/${kit.slug}/customise`}>Customise →</a> : <span className="muted small">Approved master</span>}
+                {a.customisable && isPartner ? <Link href={`/library/${kit.slug}/customise`}>Customise →</Link> : <span className="muted small">Approved master</span>}
               </div>
             ))}
           </section>
@@ -72,18 +73,18 @@ export default async function KitPage({ params }: { params: Promise<{ slug: stri
                 <br />
                 Valid until {kit.expiry}
               </p>
-              <a className="btn secondary" href="/enablement">
+              <Link className="btn secondary" href="/enablement">
                 Start enablement
-              </a>
+              </Link>
             </div>
           )}
           <div className="panel">
             <h3>Planning funded activity?</h3>
             <p className="muted">Submit your proposed activity and budget for review before committing spend.</p>
             {isPartner && (
-              <a className="btn secondary" href="/funding/new">
+              <Link className="btn secondary" href="/funding/new">
                 Request MDF funding →
-              </a>
+              </Link>
             )}
           </div>
         </section>

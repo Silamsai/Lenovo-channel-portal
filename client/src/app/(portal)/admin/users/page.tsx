@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiGet } from '@/lib/api';
 import { dateLabel, money } from '@/lib/format';
 import { requireUser } from '@/lib/session';
@@ -20,12 +21,12 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
     <>
       <PageHead role={me.role} title="Users" sub="Create and manage partner, reviewer and admin accounts, and the partner organisations they belong to." />
       <div className="tabs">
-        <a href="/admin/users" className={tab === 'users' ? 'on' : ''}>
+        <Link href="/admin/users" className={tab === 'users' ? 'on' : ''}>
           User accounts
-        </a>
-        <a href="/admin/users?tab=partners" className={tab === 'partners' ? 'on' : ''}>
+        </Link>
+        <Link href="/admin/users?tab=partners" className={tab === 'partners' ? 'on' : ''}>
           Partner organisations
-        </a>
+        </Link>
       </div>
       <Flash message={params.saved ? SAVED[params.saved] : undefined} />
       {tab === 'users' ? <UsersTab meId={me.id} q={q} params={params} /> : <PartnersTab q={q} params={params} />}
@@ -49,9 +50,9 @@ async function UsersTab({ meId, q, params }: { meId: number; q: string; params: 
         <input name="q" aria-label="Search users" placeholder="Search name, email or organisation" defaultValue={params.q ?? ''} />
         <AutoSubmitSelect name="role" label="Role" value={role} options={[['', 'All roles'], ...Object.entries(ROLE_LABELS)]} />
         <AutoSubmitSelect name="status" label="Status" value={status} options={[['', 'All statuses'], ['active', 'Active'], ['inactive', 'Deactivated']]} />
-        <a className="btn" href="/admin/users/new">
+        <Link className="btn" href="/admin/users/new">
           ＋ Add user
-        </a>
+        </Link>
       </FilterBar>
       <section className="panel flush">
         <div className="tablewrap">
@@ -83,7 +84,7 @@ async function UsersTab({ meId, q, params }: { meId: number; q: string; params: 
                     <Badge>{u.active ? 'Active' : 'Deactivated'}</Badge>
                   </td>
                   <td>
-                    <a href={`/admin/users/${u.id}`}>Manage →</a>
+                    <Link href={`/admin/users/${u.id}`}>Manage →</Link>
                   </td>
                 </tr>
               ))}
@@ -110,9 +111,9 @@ async function PartnersTab({ q, params }: { q: string; params: Params }) {
       <FilterBar action="/admin/users">
         <input type="hidden" name="tab" value="partners" />
         <input name="q" aria-label="Search organisations" placeholder="Search organisation, code or focus" defaultValue={params.q ?? ''} />
-        <a className="btn" href="/admin/partners/new">
+        <Link className="btn" href="/admin/partners/new">
           ＋ Add organisation
-        </a>
+        </Link>
       </FilterBar>
       <section className="panel flush">
         <div className="tablewrap">
@@ -146,7 +147,7 @@ async function PartnersTab({ q, params }: { q: string; params: Params }) {
                     <Badge>{p.status}</Badge>
                   </td>
                   <td>
-                    <a href={`/admin/partners/${p.id}`}>Edit →</a>
+                    <Link href={`/admin/partners/${p.id}`}>Edit →</Link>
                   </td>
                 </tr>
               ))}

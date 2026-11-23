@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiGet } from '@/lib/api';
 import { requireUser } from '@/lib/session';
 import type { Partner } from '@/lib/types';
@@ -53,7 +54,7 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
                     <Badge>{p.status}</Badge>
                   </td>
                   <td>
-                    <a href={`/partners/${p.id}`}>View profile →</a>
+                    <Link href={`/partners/${p.id}`}>View profile →</Link>
                   </td>
                 </tr>
               ))}

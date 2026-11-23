@@ -40,7 +40,7 @@ export default async function LoginPage() {
           <ActionForm action={login}>
             <div className="field">
               <label htmlFor="login-email">Email address</label>
-              <input id="login-email" name="email" type="email" autoComplete="username" required placeholder="partner@demo.example" />
+              <input id="login-email" name="email" type="email" autoComplete="username" required placeholder="you@company.com" />
             </div>
             <div className="field">
               <label htmlFor="login-password">Password</label>
@@ -51,7 +51,8 @@ export default async function LoginPage() {
             </div>
           </ActionForm>
 
-          {brand.showDemoLogins && <DemoCredentials />}
+          <p className="muted small spaced">No account yet? Ask your programme administrator to create one for you.</p>
+ dev
         </div>
       </section>
     </div>

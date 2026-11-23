@@ -1,6 +1,8 @@
+import Link from 'next/link';
 import { LuBell } from 'react-icons/lu';
 import { apiGet } from '@/lib/api';
 import { markNotificationsRead } from '@/lib/actions';
+import { CloseOnNavigate } from './CloseOnNavigate';
 
 interface Notification {
   id: number;
@@ -21,13 +23,13 @@ const ago = (iso: string) => {
 
 /**
  * Bell in the top bar, rendered on the server with every page.
- * Opens with <details> (no JavaScript needed); "Mark all as read" is a form post.
+ * Opens with <details>; closes again when you go to another page. "Mark all as read" is a form post.
  */
 export async function NotificationBell() {
   const data = await apiGet<{ items: Notification[]; unread: number }>('/notifications');
   const unread = data.unread;
   return (
-    <details className="bell">
+    <CloseOnNavigate className="bell">
       <summary className="bell-button" aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}>
         <LuBell aria-hidden />
         {unread > 0 && <span className="bell-count">{unread > 9 ? '9+' : unread}</span>}
@@ -43,18 +45,18 @@ export async function NotificationBell() {
         </div>
         <div className="bell-list">
           {data.items.map((n) => (
-            <a key={n.id} href={n.link} className={`bell-item ${n.unread ? 'unread' : ''}`}>
+            <Link key={n.id} href={n.link} className={`bell-item ${n.unread ? 'unread' : ''}`}>
               <span className="bell-dot" aria-hidden />
               <span>
                 <strong>{n.title}</strong>
                 <small>{n.detail}</small>
                 <small className="bell-time">{ago(n.createdAt)}</small>
               </span>
-            </a>
+            </Link>
           ))}
           {!data.items.length && <p className="muted small pad">You’re all caught up.</p>}
         </div>
       </div>
-    </details>
+    </CloseOnNavigate>
   );
 }
