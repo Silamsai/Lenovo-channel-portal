@@ -1,0 +1,235 @@
+// Channel Studio data model.
+// SQLite for local development. To move to PostgreSQL, change `provider`
+// to "postgresql", point DATABASE_URL at the server and re-run migrations.
+// Statuses are plain strings so the schema works on both databases.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Partner {
+  id           Int      @id @default(autoincrement())
+  code         String   @unique // BP-001
+  name         String
+  contact      String
+  email        String
+  focus        String
+  segment      String // Strategic | Growth
+  owner        String // programme owner on the vendor side
+  goal         String
+  status       String   @default("Active") // Active | Invited
+  annualBudget Float    @default(25000)
+  createdAt    DateTime @default(now())
+
+  users           User[]
+  funding         FundingRequest[]
+  customisations  KitCustomisation[]
+  benefitRequests BenefitRequest[]
+  points          PointsEntry[]
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String // PARTNER | REVIEWER
+  partnerId    Int?
+  partner      Partner? @relation(fields: [partnerId], references: [id])
+  createdAt    DateTime @default(now())
+
+  progress LearningProgress[]
+}
+
+model CampaignKit {
+  id          Int    @id @default(autoincrement())
+  slug        String @unique
+  code        String
+  title       String
+  type        String
+  description String
+  audience    String
+  channel     String
+  prepTime    String
+  market      String
+  version     String
+  expiry      String
+  assets      String // JSON: [{ name, detail, customisable }]
+
+  customisations KitCustomisation[]
+  funding        FundingRequest[]
+}
+
+model KitCustomisation {
+  id           Int         @id @default(autoincrement())
+  kitId        Int
+  partnerId    Int
+  company      String
+  contactEmail String
+  cta          String
+  url          String
+  updatedAt    DateTime    @updatedAt
+  kit          CampaignKit @relation(fields: [kitId], references: [id])
+  partner      Partner     @relation(fields: [partnerId], references: [id])
+
+  @@unique([kitId, partnerId])
+}
+
+model LearningModule {
+  id       Int    @id @default(autoincrement())
+  order    Int
+  title    String
+  minutes  Int
+  body     String
+  checks   String // JSON string[]
+  question String
+  options  String // JSON [{ value, label }]
+  answer   String
+  hint     String
+
+  progress LearningProgress[]
+}
+
+model LearningProgress {
+  userId      Int
+  moduleId    Int
+  completedAt DateTime       @default(now())
+  user        User           @relation(fields: [userId], references: [id])
+  module      LearningModule @relation(fields: [moduleId], references: [id])
+
+  @@id([userId, moduleId])
+}
+
+model FundingRequest {
+  id           Int          @id @default(autoincrement())
+  code         String       @unique // MDF-027
+  partnerId    Int
+  kitId        Int?
+  title        String
+  quarter      String // 2026-Q4
+  date         String // YYYY-MM-DD planned execution date
+  type         String // Webinar | Customer event | Email campaign | Digital campaign
+  objective    String
+  eligibleCost Float
+  amount       Float
+  status       String       @default("Draft") // Draft | Submitted | Approved | Changes requested | Rejected
+  feedback     String?
+  submittedBy  Int?
+  decidedBy    Int?
+  submittedAt  DateTime?
+  decidedAt    DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  partner      Partner      @relation(fields: [partnerId], references: [id])
+  kit          CampaignKit? @relation(fields: [kitId], references: [id])
+  campaign     Campaign?
+}
+
+model Campaign {
+  id           Int            @id @default(autoincrement())
+  fundingId    Int            @unique
+  startedAt    DateTime       @default(now())
+  completedAt  DateTime?
+  metrics      String? // JSON of the type's required counts
+  actualSpend  Float?
+  assetStatus  String         @default("Draft") // Draft | Submitted | Approved | Changes requested
+  assetVersion Int            @default(1)
+  assetNote    String?
+  assetBy      Int? // who submitted the current asset version
+  funding      FundingRequest @relation(fields: [fundingId], references: [id])
+  files        CampaignFile[]
+  claim        Claim?
+}
+
+// Campaign assets (kind = "asset") and POE evidence (kind = "delivery" | "performance" | "invoices").
+model CampaignFile {
+  id         Int      @id @default(autoincrement())
+  campaignId Int
+  kind       String
+  name       String
+  storedAs   String
+  size       Int
+  mime       String
+  uploadedAt DateTime @default(now())
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model Claim {
+  id          Int       @id @default(autoincrement())
+  code        String    @unique // CLM-024
+  campaignId  Int       @unique
+  amount      Float?
+  attested    Boolean   @default(false)
+  status      String    @default("Draft") // Draft | Submitted | Approved | Changes requested | Rejected
+  note        String?
+  submittedBy Int?
+  decidedBy   Int?
+  submittedAt DateTime?
+  decidedAt   DateTime?
+  paymentRef  String?
+  paidAt      String?
+  paidBy      Int?
+  campaign    Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model BenefitItem {
+  id          Int              @id @default(autoincrement())
+  name        String
+  description String
+  segment     String // All | Strategic
+  limitText   String
+  requests    BenefitRequest[]
+}
+
+model BenefitRequest {
+  id           Int         @id @default(autoincrement())
+  partnerId    Int
+  benefitId    Int
+  note         String
+  status       String      @default("Pending") // Pending | Approved | Rejected
+  decisionNote String?
+  createdAt    DateTime    @default(now())
+  partner      Partner     @relation(fields: [partnerId], references: [id])
+  benefit      BenefitItem @relation(fields: [benefitId], references: [id])
+}
+
+model RewardItem {
+  id      Int           @id @default(autoincrement())
+  name    String
+  cost    Int
+  entries PointsEntry[]
+}
+
+// Points ledger. Earn entries are positive, redemptions negative.
+// Balance = sum of approved entries.
+model PointsEntry {
+  id           Int         @id @default(autoincrement())
+  partnerId    Int
+  kind         String // earn | redeem
+  points       Int
+  reason       String
+  evidence     String?
+  rewardId     Int?
+  status       String      @default("Pending") // Pending | Approved | Rejected
+  decisionNote String?
+  createdAt    DateTime    @default(now())
+  partner      Partner     @relation(fields: [partnerId], references: [id])
+  reward       RewardItem? @relation(fields: [rewardId], references: [id])
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  entity     String // funding | assets | claim | benefit | points | kit | partner
+  entityId   Int
+  action     String
+  fromStatus String?
+  toStatus   String?
+  note       String?
+  createdAt  DateTime @default(now())
+}
