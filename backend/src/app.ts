@@ -18,6 +18,7 @@ import { programmeRouter } from './routes/programme';
 
 export function createApp() {
   const app = express();
+  app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(cors({ origin: env.clientOrigin, credentials: true }));

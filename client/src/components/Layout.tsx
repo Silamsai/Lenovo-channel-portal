@@ -68,7 +68,7 @@ export function Layout() {
     <div className="shell">
       <header className="topbar">
         <NavLink to="/" className="brand">
-          <b className="wordmark">{brand.name}</b>
+          <img className="wordmark-logo" src={brand.logo} alt={brand.name} />
           <span>{brand.product}</span>
         </NavLink>
         <div className="topright">

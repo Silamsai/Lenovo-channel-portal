@@ -1,5 +1,15 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import path from 'path';
+
+// Explicitly load backend/.env, then fall back to repo root / cwd .env
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config();
+
+// Ensure DATABASE_URL is set as a fallback for SQLite dev database
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = `file:${path.resolve(__dirname, '../prisma/dev.db')}`;
+}
 
 const isProd = process.env.NODE_ENV === 'production';
 

@@ -1,6 +1,7 @@
 import type { ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
 import { MulterError } from 'multer';
+import { env } from '../env';
 
 export class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -29,5 +30,5 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return;
   }
   console.error(err);
-  res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  res.status(500).json({ error: env.isProd ? 'Something went wrong. Please try again.' : (err instanceof Error ? err.message : 'Something went wrong. Please try again.') });
 };
