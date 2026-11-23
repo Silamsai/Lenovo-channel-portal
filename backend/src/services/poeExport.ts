@@ -1,11 +1,11 @@
 import fs from 'fs/promises';
 import PptxGenJS from 'pptxgenjs';
 import JSZip from 'jszip';
-import { filePath } from '../middleware/upload';
+import { filePath } from './files';
 import { EVIDENCE_KINDS, EVIDENCE_LABELS } from './rules';
 import type { FundingOut } from './serialize';
-import { brandName } from './brand';
 
+export const brandName = process.env.BRAND_NAME || 'Lenovo';
 const gbp = (n: number | null | undefined) => '£' + Number(n || 0).toLocaleString('en-GB', { maximumFractionDigits: 2 });
 
 type Stored = { id: number; storedAs: string };
@@ -23,7 +23,7 @@ export async function buildPoePack(item: FundingOut, stored: Stored[], type: 'pp
     s.addShape('rect', { x: 0, y: 0, w: 13.33, h: 0.18, fill: { color: 'E2231A' } });
     s.addText(`${brandName} | CHANNEL STUDIO`, { x: 0.6, y: 0.35, w: 12, h: 0.4, fontSize: 12, color: 'B91C14', bold: true });
     s.addText(title, { x: 0.6, y: 0.9, w: 12, h: 0.9, fontSize: 28, bold: true, color: '1A1A1A' });
-    s.addText(lines.join('\n'), { x: 0.6, y: 2.0, w: 12, h: 4.8, fontSize: 18, color: '333333', valign: 'top', fit: 'shrink' });
+    s.addText(lines.filter(Boolean).join('\n'), { x: 0.6, y: 2.0, w: 12, h: 4.8, fontSize: 18, color: '333333', valign: 'top', fit: 'shrink' });
   };
 
   slide(item.title, [
@@ -36,23 +36,11 @@ export async function buildPoePack(item: FundingOut, stored: Stored[], type: 'pp
   ]);
   slide(
     'Campaign performance',
-    c.metricFields.length && c.resultsReady
-      ? [...c.metricFields.map(([k, label]) => `${label}: ${c.metrics[k]}`), `Actual eligible spend: ${gbp(c.actualSpend)}`]
-      : ['Performance not yet recorded.'],
+    c.resultsReady ? [...c.metricFields.map(([k, label]) => `${label}: ${c.metrics[k]}`), `Actual eligible spend: ${gbp(c.actualSpend)}`] : ['Performance not yet recorded.'],
   );
-  slide('Campaign asset approval', [
-    `Version ${c.assetVersion} · ${c.assetStatus}`,
-    ...c.assets.map((f) => `• ${f.name}`),
-    c.assetNote ? `Reviewer note: ${c.assetNote}` : '',
-  ]);
-  slide('POE checklist', [
-    `Approved campaign assets: ${c.assets.length} file(s)`,
-    ...EVIDENCE_KINDS.map((k) => `${EVIDENCE_LABELS[k]}: ${c.evidence[k].length} file(s)`),
-  ]);
-  const index = [
-    ...c.assets.map((f) => `Campaign asset: ${f.name}`),
-    ...EVIDENCE_KINDS.flatMap((k) => c.evidence[k].map((f) => `${EVIDENCE_LABELS[k]}: ${f.name}`)),
-  ];
+  slide('Campaign asset approval', [`Version ${c.assetVersion} · ${c.assetStatus}`, ...c.assets.map((f) => `• ${f.name}`), c.assetNote ? `Reviewer note: ${c.assetNote}` : '']);
+  slide('POE checklist', [`Approved campaign assets: ${c.assets.length} file(s)`, ...EVIDENCE_KINDS.map((k) => `${EVIDENCE_LABELS[k]}: ${c.evidence[k].length} file(s)`)]);
+  const index = [...c.assets.map((f) => `Campaign asset: ${f.name}`), ...EVIDENCE_KINDS.flatMap((k) => c.evidence[k].map((f) => `${EVIDENCE_LABELS[k]}: ${f.name}`))];
   for (let i = 0; i < index.length; i += 10) slide('Evidence index', index.slice(i, i + 10));
 
   const pptBuffer = (await ppt.write({ outputType: 'nodebuffer' })) as Buffer;
@@ -61,10 +49,7 @@ export async function buildPoePack(item: FundingOut, stored: Stored[], type: 'pp
   const zip = new JSZip();
   zip.file(`${claim.code}-POE.pptx`, pptBuffer);
   const storedById = new Map(stored.map((s) => [s.id, s.storedAs]));
-  const groups: [string, typeof c.assets][] = [
-    ['0-campaign-assets', c.assets],
-    ...EVIDENCE_KINDS.map((k, i) => [`${i + 1}-${k}`, c.evidence[k]] as [string, typeof c.assets]),
-  ];
+  const groups: [string, typeof c.assets][] = [['0-campaign-assets', c.assets], ...EVIDENCE_KINDS.map((k, i) => [`${i + 1}-${k}`, c.evidence[k]] as [string, typeof c.assets])];
   const manifest: { name: string; path: string; category: string; bytes: number }[] = [];
   for (const [folder, files] of groups) {
     for (const [j, f] of files.entries()) {

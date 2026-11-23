@@ -2,7 +2,7 @@
   "name": "channel-studio",
   "private": true,
   "version": "0.1.0",
-  "description": "Partner marketing portal: MDF funding, campaigns, asset approvals, proof of execution and claims.",
+  "description": "Partner marketing portal: Next.js (multi-page) frontend + Node.js/TypeScript API on PostgreSQL.",
   "scripts": {
     "install:all": "npm install --prefix backend && npm install --prefix client",
     "dev": "npm run dev:all --prefix backend",
@@ -10,8 +10,10 @@
     "dev:client": "npm run dev --prefix client",
     "build": "npm run build --prefix backend && npm run build --prefix client",
     "start": "npm start --prefix backend",
+    "start:client": "npm start --prefix client",
     "db:migrate": "npm run db:migrate --prefix backend",
-    "db:seed": "npm run db:seed --prefix backend",
-    "typecheck": "npm run typecheck --prefix backend && npm run typecheck --prefix client"
+    "admin:create": "npm run admin:create --prefix backend",
+    "typecheck": "npm run typecheck --prefix backend && npm run typecheck --prefix client",
+    "db:reset": "npm run db:reset --prefix backend"
   }
 }

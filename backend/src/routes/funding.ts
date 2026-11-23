@@ -1,32 +1,30 @@
-import { Router } from 'express';
 import { z } from 'zod';
-import { prisma } from '../db';
-import { assertPartnerAccess, ownPartnerId, requireRole, type AuthUser } from '../middleware/auth';
-import { badRequest, conflict, forbidden, notFound } from '../middleware/errors';
+import { db, type Executor } from '../db';
+import { assertPartnerAccess, auth, ownPartnerId, role, type AuthUser } from '../auth';
+import { badRequest, conflict, forbidden, notFound } from '../lib/http';
+import { Router } from '../lib/router';
 import { audit, history } from '../services/audit';
 import { partnerBudget } from '../services/budget';
 import { CAMPAIGN_TYPES, fundingProblem, isLocked } from '../services/rules';
-import { fundingInclude, serializeFunding } from '../services/serialize';
+import { loadFunding, publicFunding } from '../services/serialize';
 
-export const fundingRouter = Router();
+export const fundingRoutes = new Router();
 
-export async function loadFunding(id: number, user: AuthUser) {
+/** One funding request with everything attached; checks the user may see it. */
+export async function getFunding(id: number, user: AuthUser) {
   if (!Number.isInteger(id)) throw notFound();
-  const f = await prisma.fundingRequest.findUnique({ where: { id }, include: fundingInclude });
+  const [f] = await loadFunding('f.id = $1', [id]);
   if (!f) throw notFound('Funding request not found.');
   assertPartnerAccess(user, f.partnerId);
+  if (user.role !== 'PARTNER' && f.status === 'Draft') throw notFound('Funding request not found.');
   return f;
 }
 
-async function nextCode(prefix: 'MDF' | 'CLM') {
-  const rows =
-    prefix === 'MDF'
-      ? await prisma.fundingRequest.findMany({ select: { code: true } })
-      : await prisma.claim.findMany({ select: { code: true } });
-  const max = rows.reduce((n, r) => Math.max(n, Number(r.code.split('-')[1]) || 0), 0);
-  return `${prefix}-${String(max + 1).padStart(3, '0')}`;
+export async function nextCode(tx: Executor, prefix: 'MDF' | 'CLM') {
+  const table = prefix === 'MDF' ? 'funding_requests' : 'claims';
+  const row = await tx.one(`SELECT COALESCE(MAX(CAST(SPLIT_PART(code, '-', 2) AS INTEGER)), 0) + 1 AS next FROM ${table}`);
+  return `${prefix}-${String(row.next).padStart(3, '0')}`;
 }
-export { nextCode };
 
 const FundingBody = z.object({
   title: z.string().trim().min(1, 'Activity name is required.').max(100),
@@ -46,36 +44,35 @@ const Decision = z.object({
   note: z.string().trim().max(1000).default(''),
 });
 
-// List: partners see their own; reviewers see all (optionally filtered).
-fundingRouter.get('/', async (req, res) => {
-  const user = req.user!;
-  const quarter = typeof req.query.quarter === 'string' && req.query.quarter !== 'all' ? req.query.quarter : undefined;
-  const rows = await prisma.fundingRequest.findMany({
-    where: {
-      ...(user.role === 'PARTNER' ? { partnerId: user.partnerId! } : {}),
-      ...(quarter ? { quarter } : {}),
-      // Reviewers do not see partners' private drafts.
-      ...(user.role === 'REVIEWER' ? { status: { not: 'Draft' } } : {}),
-    },
-    include: fundingInclude,
-    orderBy: [{ date: 'desc' }],
-  });
-  const budget = user.role === 'PARTNER' ? await partnerBudget(user.partnerId!) : null;
-  res.json({ items: rows.map(serializeFunding), budget });
+// List: partners see their own; reviewers and admins see all except private drafts.
+fundingRoutes.get('/', auth, async (ctx) => {
+  const user = ctx.me;
+  const quarter = ctx.query.get('quarter');
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  if (user.role === 'PARTNER') {
+    params.push(user.partnerId);
+    conditions.push(`f.partner_id = $${params.length}`);
+  } else {
+    conditions.push(`f.status <> 'Draft'`);
+  }
+  if (quarter && quarter !== 'all') {
+    params.push(quarter);
+    conditions.push(`f.quarter = $${params.length}`);
+  }
+  const [items, budget] = await Promise.all([
+    loadFunding(conditions.join(' AND '), params),
+    user.role === 'PARTNER' ? partnerBudget(user.partnerId!) : null,
+  ]);
+  return { items: items.map(publicFunding), budget };
 });
 
-fundingRouter.get('/budget', async (req, res) => {
-  res.json(await partnerBudget(ownPartnerId(req.user!)));
-});
+fundingRoutes.get('/budget', auth, async (ctx) => partnerBudget(ownPartnerId(ctx.me)));
 
-fundingRouter.get('/:id', async (req, res) => {
-  const f = await loadFunding(Number(req.params.id), req.user!);
-  if (req.user!.role === 'REVIEWER' && f.status === 'Draft') throw notFound('Funding request not found.');
-  res.json({
-    item: serializeFunding(f),
-    budget: await partnerBudget(f.partnerId, f.id),
-    history: await history('funding', f.id),
-  });
+fundingRoutes.get('/:id', auth, async (ctx) => {
+  const f = await getFunding(ctx.param('id'), ctx.me);
+  const [budget, hist] = await Promise.all([partnerBudget(f.partnerId, f.id), history('funding', f.id)]);
+  return { item: publicFunding(f), budget, history: hist };
 });
 
 async function saveFunding(body: z.infer<typeof FundingBody>, partnerId: number, userId: number, existingId?: number) {
@@ -83,39 +80,50 @@ async function saveFunding(body: z.infer<typeof FundingBody>, partnerId: number,
   const problem = fundingProblem(body, budget.available);
   if (problem) throw badRequest(problem);
   if (body.submit && !body.attest) throw badRequest('Confirm that funding approval will be obtained before committing spend.');
-  if (body.kitId) {
-    const kit = await prisma.campaignKit.findUnique({ where: { id: body.kitId } });
-    if (!kit) throw badRequest('Unknown campaign kit.');
-  }
-  const data = {
-    title: body.title,
-    kitId: body.kitId ?? null,
-    quarter: body.quarter,
-    date: body.date,
-    type: body.type,
-    objective: body.objective,
-    eligibleCost: body.eligibleCost,
-    amount: body.amount,
-    ...(body.submit ? { status: 'Submitted', submittedBy: userId, submittedAt: new Date(), feedback: null } : {}),
-  };
-  if (existingId) return prisma.fundingRequest.update({ where: { id: existingId }, data });
-  return prisma.fundingRequest.create({ data: { ...data, partnerId, code: await nextCode('MDF') } });
+  if (body.kitId && !(await db.maybe('SELECT id FROM campaign_kits WHERE id = $1', [body.kitId]))) throw badRequest('Unknown campaign kit.');
+  const values = [body.title, body.kitId ?? null, body.quarter, body.date, body.type, body.objective, body.eligibleCost, body.amount];
+  return db.tx(async (tx) => {
+    let id = existingId;
+    if (id) {
+      await tx.run(
+        `UPDATE funding_requests SET title=$1, kit_id=$2, quarter=$3, date=$4, type=$5, objective=$6, eligible_cost=$7, amount=$8, updated_at=now() WHERE id=$9`,
+        [...values, id],
+      );
+    } else {
+      const code = await nextCode(tx, 'MDF');
+      id = (
+        await tx.one(
+          `INSERT INTO funding_requests (title, kit_id, quarter, date, type, objective, eligible_cost, amount, partner_id, code)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+          [...values, partnerId, code],
+        )
+      ).id as number;
+    }
+    if (body.submit) {
+      await tx.run(
+        `UPDATE funding_requests SET status='Submitted', submitted_by=$1, submitted_at=now(), feedback=NULL WHERE id=$2`,
+        [userId, id],
+      );
+    }
+    return id;
+  });
 }
 
-fundingRouter.post('/', requireRole('PARTNER'), async (req, res) => {
-  const user = req.user!;
-  const body = FundingBody.parse(req.body);
-  const saved = await saveFunding(body, ownPartnerId(user), user.id);
-  await audit({ userId: user.id, entity: 'funding', entityId: saved.id, action: 'Created', toStatus: saved.status });
-  if (body.submit) await audit({ userId: user.id, entity: 'funding', entityId: saved.id, action: 'Submitted for review', fromStatus: 'Draft', toStatus: 'Submitted' });
-  res.status(201).json(serializeFunding(await loadFunding(saved.id, user)));
+fundingRoutes.post('/', auth, role('PARTNER'), async (ctx) => {
+  const user = ctx.me;
+  const body = FundingBody.parse(await ctx.json());
+  const id = await saveFunding(body, ownPartnerId(user), user.id);
+  await audit({ userId: user.id, entity: 'funding', entityId: id, action: 'Created', toStatus: 'Draft' });
+  if (body.submit) await audit({ userId: user.id, entity: 'funding', entityId: id, action: 'Submitted for review', fromStatus: 'Draft', toStatus: 'Submitted' });
+  ctx.status = 201;
+  return publicFunding(await getFunding(id, user));
 });
 
-fundingRouter.put('/:id', requireRole('PARTNER'), async (req, res) => {
-  const user = req.user!;
-  const f = await loadFunding(Number(req.params.id), user);
+fundingRoutes.put('/:id', auth, role('PARTNER'), async (ctx) => {
+  const user = ctx.me;
+  const f = await getFunding(ctx.param('id'), user);
   if (isLocked(f.status)) throw conflict(`This request is ${f.status.toLowerCase()} and can no longer be edited.`);
-  const body = FundingBody.parse(req.body);
+  const body = FundingBody.parse(await ctx.json());
   await saveFunding(body, f.partnerId, user.id, f.id);
   await audit({
     userId: user.id,
@@ -125,44 +133,40 @@ fundingRouter.put('/:id', requireRole('PARTNER'), async (req, res) => {
     fromStatus: f.status,
     toStatus: body.submit ? 'Submitted' : f.status,
   });
-  res.json(serializeFunding(await loadFunding(f.id, user)));
+  return publicFunding(await getFunding(f.id, user));
 });
 
-fundingRouter.delete('/:id', requireRole('PARTNER'), async (req, res) => {
-  const f = await loadFunding(Number(req.params.id), req.user!);
+fundingRoutes.delete('/:id', auth, role('PARTNER'), async (ctx) => {
+  const f = await getFunding(ctx.param('id'), ctx.me);
   if (f.status !== 'Draft') throw conflict('Only drafts can be deleted.');
-  await prisma.fundingRequest.delete({ where: { id: f.id } });
-  res.json({ ok: true });
+  await db.run('DELETE FROM funding_requests WHERE id = $1', [f.id]);
+  return { ok: true };
 });
 
-fundingRouter.post('/:id/decision', requireRole('REVIEWER'), async (req, res) => {
-  const user = req.user!;
-  const f = await loadFunding(Number(req.params.id), user);
-  const { decision, note } = Decision.parse(req.body);
+fundingRoutes.post('/:id/decision', auth, role('REVIEWER'), async (ctx) => {
+  const user = ctx.me;
+  const f = await getFunding(ctx.param('id'), user);
+  const { decision, note } = Decision.parse(await ctx.json());
   if (f.status !== 'Submitted') throw conflict('Only submitted requests can be reviewed.');
   if (f.submittedBy === user.id) throw forbidden('You cannot decide a request you submitted.');
   if (decision !== 'Approved' && !note) throw badRequest('Give the partner a reason.');
-  if (decision === 'Approved') {
-    const budget = await partnerBudget(f.partnerId, f.id);
-    if (f.amount > budget.available) throw conflict('Not enough budget left to approve this request.');
-  }
-  await prisma.fundingRequest.update({
-    where: { id: f.id },
-    data: { status: decision, feedback: note || null, decidedBy: user.id, decidedAt: new Date() },
-  });
+  if (decision === 'Approved' && f.amount > (await partnerBudget(f.partnerId, f.id)).available) throw conflict('Not enough budget left to approve this request.');
+  await db.run('UPDATE funding_requests SET status=$1, feedback=$2, decided_by=$3, decided_at=now(), updated_at=now() WHERE id=$4', [decision, note || null, user.id, f.id]);
   await audit({ userId: user.id, entity: 'funding', entityId: f.id, action: `Decision: ${decision}`, fromStatus: f.status, toStatus: decision, note });
-  res.json(serializeFunding(await loadFunding(f.id, user)));
+  return publicFunding(await getFunding(f.id, user));
 });
 
 // Start the campaign linked to an approved request. Creates its draft claim too.
-fundingRouter.post('/:id/start', requireRole('PARTNER'), async (req, res) => {
-  const user = req.user!;
-  const f = await loadFunding(Number(req.params.id), user);
+fundingRoutes.post('/:id/start', auth, role('PARTNER'), async (ctx) => {
+  const user = ctx.me;
+  const f = await getFunding(ctx.param('id'), user);
   if (f.status !== 'Approved') throw conflict('Funding must be approved before the campaign can start.');
   if (!f.campaign) {
-    const campaign = await prisma.campaign.create({ data: { fundingId: f.id } });
-    await prisma.claim.create({ data: { campaignId: campaign.id, code: await nextCode('CLM') } });
+    await db.tx(async (tx) => {
+      const campaign = await tx.one('INSERT INTO campaigns (funding_id) VALUES ($1) RETURNING id', [f.id]);
+      await tx.run('INSERT INTO claims (campaign_id, code) VALUES ($1, $2)', [campaign.id, await nextCode(tx, 'CLM')]);
+    });
     await audit({ userId: user.id, entity: 'funding', entityId: f.id, action: 'Campaign started' });
   }
-  res.json(serializeFunding(await loadFunding(f.id, user)));
+  return publicFunding(await getFunding(f.id, user));
 });

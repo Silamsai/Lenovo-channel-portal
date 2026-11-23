@@ -1,57 +1,72 @@
-import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
-import { prisma } from '../db';
-import { clearSession, requireAuth, setSession } from '../middleware/auth';
-import { HttpError } from '../middleware/errors';
+import { db } from '../db';
+import { COOKIE, SESSION_SECONDS, auth, signToken } from '../auth';
+import { env } from '../env';
+import { HttpError } from '../lib/http';
+import { Router, type Ctx } from '../lib/router';
 
-export const authRouter = Router();
-
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  message: { error: 'Too many sign-in attempts. Try again in a few minutes.' },
-});
+export const authRoutes = new Router();
 
 const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', 10);
+
+// Simple in-memory rate limit for sign-in: 20 attempts per 15 minutes per IP.
+const attempts = new Map<string, { count: number; reset: number }>();
+function rateLimit(ctx: Ctx) {
+  const ip = String(ctx.req.headers['x-forwarded-for'] || ctx.req.socket.remoteAddress || 'unknown').split(',')[0].trim();
+  const now = Date.now();
+  const entry = attempts.get(ip);
+  if (!entry || entry.reset < now) {
+    attempts.set(ip, { count: 1, reset: now + 15 * 60 * 1000 });
+    return;
+  }
+  entry.count++;
+  if (entry.count > 20) throw new HttpError(429, 'Too many sign-in attempts. Try again in a few minutes.');
+}
+
+export async function publicUser(id: number) {
+  const u = await db.one(
+    `SELECT u.id, u.email, u.name, u.role, p.id AS partner_id, p.name AS partner_name, p.code AS partner_code, p.segment AS partner_segment
+       FROM users u LEFT JOIN partners p ON p.id = u.partner_id WHERE u.id = $1`,
+    [id],
+  );
+  return {
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    role: u.role,
+    partner: u.partnerId ? { id: u.partnerId, name: u.partnerName, code: u.partnerCode, segment: u.partnerSegment } : null,
+  };
+}
 
 const LoginBody = z.object({
   email: z.string().trim().toLowerCase().email(),
   password: z.string().min(1).max(200),
 });
 
-async function publicUser(id: number) {
-  const u = await prisma.user.findUniqueOrThrow({ where: { id }, include: { partner: true } });
-  return {
-    id: u.id,
-    email: u.email,
-    name: u.name,
-    role: u.role,
-    partner: u.partner ? { id: u.partner.id, name: u.partner.name, code: u.partner.code, segment: u.partner.segment } : null,
-  };
-}
-
-authRouter.post('/login', loginLimiter, async (req, res) => {
-  const parsed = LoginBody.safeParse(req.body);
+authRoutes.post('/login', async (ctx) => {
+  rateLimit(ctx);
+  const parsed = LoginBody.safeParse(await ctx.json());
   const fail = new HttpError(401, 'Email or password not recognised.');
   if (!parsed.success) throw fail;
-  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
-  // Compare against a dummy hash when the user is unknown, so timing does not reveal which emails exist.
-  const hash = user?.passwordHash ?? DUMMY_HASH;
-  const ok = await bcrypt.compare(parsed.data.password, hash);
+  const user = await db.maybe('SELECT id, password_hash, active FROM users WHERE email = $1', [parsed.data.email]);
+  // Compare against a dummy hash when the email is unknown, so timing does not reveal which emails exist.
+  const ok = await bcrypt.compare(parsed.data.password, user?.passwordHash ?? DUMMY_HASH);
   if (!user || !ok) throw fail;
-  setSession(res, user.id);
-  res.json(await publicUser(user.id));
+  if (!user.active) throw new HttpError(403, 'This account has been deactivated. Contact your platform administrator.');
+  await db.run('UPDATE users SET last_login_at = now() WHERE id = $1', [user.id]);
+  const token = signToken(user.id);
+  // The Next.js app stores the token in its own cookie; the cookie here helps direct API use and tests.
+  ctx.res.setHeader(
+    'Set-Cookie',
+    `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_SECONDS}${env.isProd ? '; Secure' : ''}`,
+  );
+  return { user: await publicUser(user.id), token, expiresIn: SESSION_SECONDS };
 });
 
-authRouter.post('/logout', (_req, res) => {
-  clearSession(res);
-  res.json({ ok: true });
+authRoutes.post('/logout', (ctx) => {
+  ctx.res.setHeader('Set-Cookie', `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+  return { ok: true };
 });
 
-authRouter.get('/me', requireAuth, async (req, res) => {
-  res.json(await publicUser(req.user!.id));
-});
+authRoutes.get('/me', auth, (ctx) => publicUser(ctx.me.id));
