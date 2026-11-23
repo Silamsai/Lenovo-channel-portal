@@ -15,9 +15,5 @@
     "db:seed": "npm run db:seed --prefix backend",
     "admin:create": "npm run admin:create --prefix backend",
     "typecheck": "npm run typecheck --prefix backend && npm run typecheck --prefix client"
-  },
-  "dependencies": {
-    "@neon/config": "^1.14.6",
-    "@neon/env": "^2.1.9"
   }
 }
