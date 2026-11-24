@@ -52,7 +52,7 @@ export default async function LoginPage() {
           </ActionForm>
 
           <p className="muted small spaced">No account yet? Ask your programme administrator to create one for you.</p>
- dev
+          <DemoCredentials />
         </div>
       </section>
     </div>
