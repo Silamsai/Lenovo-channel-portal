@@ -62,7 +62,7 @@ function PartnerOverview({ items, quarter, partnerName, modules }: { items: Fund
           <strong>
             Turn ambition
             <br />
-            into impact.
+            <em>into impact.</em>
           </strong>
           <p>Funding to performance, all in one workspace.</p>
         </div>

@@ -16,6 +16,7 @@ import {
   LuNetwork,
   LuPoundSterling,
   LuSettings,
+  LuUserRound,
   LuShieldCheck,
   LuUsers,
 } from 'react-icons/lu';
@@ -57,6 +58,7 @@ const NAV: Record<Role, { main: Item[]; programme?: Item[] }> = {
       ['/admin', LuLayoutDashboard, 'Overview'],
       ['/admin/users', LuUsers, 'Users'],
       ['/admin/settings', LuSettings, 'Settings'],
+      ['/admin/profile', LuUserRound, 'Profile'],
     ],
   },
 };
