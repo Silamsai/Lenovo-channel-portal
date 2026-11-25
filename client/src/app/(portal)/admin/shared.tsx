@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { FormState } from '@/lib/actions';
 import type { Role } from '@/lib/types';
 import { ActionForm, Submit } from '@/components/forms';
+import { DialogCancel } from '@/components/Modal';
 import { RoleFields } from './RoleFields';
 
 export interface AdminUser {
@@ -40,7 +41,20 @@ export const ROLE_LABELS: Record<Role, string> = {
 type Action = (prev: FormState, fd: FormData) => Promise<FormState>;
 
 /** Create or edit a user account. */
-export function UserForm({ action, user, partners, isSelf }: { action: Action; user?: AdminUser; partners: AdminPartner[]; isSelf?: boolean }) {
+export function UserForm({
+  action,
+  user,
+  partners,
+  isSelf,
+  inModal,
+}: {
+  action: Action;
+  user?: AdminUser;
+  partners: AdminPartner[];
+  isSelf?: boolean;
+  /** Rendered inside a floating window: Cancel closes it instead of navigating. */
+  inModal?: boolean;
+}) {
   return (
     <ActionForm action={action}>
       <div className="fields">
@@ -72,14 +86,18 @@ export function UserForm({ action, user, partners, isSelf }: { action: Action; u
         </label>
       )}
       <p className="muted small">
-        Partner marketers see only their own organisation’s data. Reviewers approve funding, assets, claims and partner requests. Platform admins manage users, organisations
-        and settings.
+        Partner marketers see only their own organisation’s data. Reviewers approve funding, assets, claims and partner requests. Platform admins manage users,
+        organisations and settings.
       </p>
       <div className="actions">
         <Submit>{user ? 'Save changes' : 'Create user'} →</Submit>
-        <Link className="btn secondary" href="/admin/users">
-          Cancel
-        </Link>
+        {inModal ? (
+          <DialogCancel />
+        ) : (
+          <Link className="btn secondary" href="/admin/users">
+            Cancel
+          </Link>
+        )}
       </div>
     </ActionForm>
   );
@@ -88,7 +106,7 @@ export function UserForm({ action, user, partners, isSelf }: { action: Action; u
 const FOCUSES = ['ThinkPad workplace', 'ThinkSystem infrastructure', 'ThinkStation creators'];
 
 /** Create or edit a partner organisation. */
-export function PartnerForm({ action, partner }: { action: Action; partner?: AdminPartner }) {
+export function PartnerForm({ action, partner, inModal }: { action: Action; partner?: AdminPartner; inModal?: boolean }) {
   return (
     <ActionForm action={action}>
       <div className="fields">
@@ -133,14 +151,26 @@ export function PartnerForm({ action, partner }: { action: Action; partner?: Adm
         </div>
         <div className="field">
           <label htmlFor="o-budget">Annual MDF budget (£)</label>
-          <input id="o-budget" name="annualBudget" type="number" min="0" step="100" placeholder={partner ? '' : 'Default from settings'} defaultValue={partner?.annualBudget} />
+          <input
+            id="o-budget"
+            name="annualBudget"
+            type="number"
+            min="0"
+            step="100"
+            placeholder={partner ? '' : 'Default from settings'}
+            defaultValue={partner?.annualBudget}
+          />
         </div>
       </div>
       <div className="actions">
         <Submit>{partner ? 'Save changes' : 'Create organisation'} →</Submit>
-        <Link className="btn secondary" href="/admin/users?tab=partners">
-          Cancel
-        </Link>
+        {inModal ? (
+          <DialogCancel />
+        ) : (
+          <Link className="btn secondary" href="/admin/users?tab=partners">
+            Cancel
+          </Link>
+        )}
       </div>
     </ActionForm>
   );

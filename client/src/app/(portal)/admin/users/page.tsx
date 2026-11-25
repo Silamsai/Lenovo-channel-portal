@@ -4,7 +4,9 @@ import { dateLabel, money } from '@/lib/format';
 import { requireUser } from '@/lib/session';
 import { Badge, FilterBar, Flash, PageHead } from '@/components/ui';
 import { AutoSubmitSelect } from '@/components/forms';
-import { ROLE_LABELS, type AdminPartner, type AdminUser } from '../shared';
+import { ModalTrigger } from '@/components/Modal';
+import { createPartner, createUser } from '@/lib/actions';
+import { PartnerForm, ROLE_LABELS, UserForm, type AdminPartner, type AdminUser } from '../shared';
 
 export const metadata = { title: 'Users' };
 
@@ -35,11 +37,13 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: P
 }
 
 async function UsersTab({ meId, q, params }: { meId: number; q: string; params: Params }) {
-  const all = await apiGet<AdminUser[]>('/admin/users');
+  const [all, partners] = await Promise.all([apiGet<AdminUser[]>('/admin/users'), apiGet<AdminPartner[]>('/admin/partners')]);
   const role = params.role ?? '';
   const status = params.status ?? '';
+  // Your own admin account is shown under Profile, not in this list.
   const rows = all.filter(
     (u) =>
+      u.id !== meId &&
       `${u.name} ${u.email} ${u.partner?.name ?? ''}`.toLowerCase().includes(q) &&
       (!role || u.role === role) &&
       (!status || (status === 'active' ? u.active : !u.active)),
@@ -49,10 +53,19 @@ async function UsersTab({ meId, q, params }: { meId: number; q: string; params: 
       <FilterBar action="/admin/users">
         <input name="q" aria-label="Search users" placeholder="Search name, email or organisation" defaultValue={params.q ?? ''} />
         <AutoSubmitSelect name="role" label="Role" value={role} options={[['', 'All roles'], ...Object.entries(ROLE_LABELS)]} />
-        <AutoSubmitSelect name="status" label="Status" value={status} options={[['', 'All statuses'], ['active', 'Active'], ['inactive', 'Deactivated']]} />
-        <Link className="btn" href="/admin/users/new">
-          ＋ Add user
-        </Link>
+        <AutoSubmitSelect
+          name="status"
+          label="Status"
+          value={status}
+          options={[
+            ['', 'All statuses'],
+            ['active', 'Active'],
+            ['inactive', 'Deactivated'],
+          ]}
+        />
+        <ModalTrigger label="＋ Add user" title="Add a user" sub="Create a partner, reviewer or admin account with a temporary password.">
+          <UserForm action={createUser} partners={partners} inModal />
+        </ModalTrigger>
       </FilterBar>
       <section className="panel flush">
         <div className="tablewrap">
@@ -74,7 +87,6 @@ async function UsersTab({ meId, q, params }: { meId: number; q: string; params: 
                     <strong>{u.name}</strong>
                     <small>
                       {u.email}
-                      {u.id === meId ? ' · you' : ''}
                     </small>
                   </td>
                   <td>{ROLE_LABELS[u.role]}</td>
@@ -111,9 +123,13 @@ async function PartnersTab({ q, params }: { q: string; params: Params }) {
       <FilterBar action="/admin/users">
         <input type="hidden" name="tab" value="partners" />
         <input name="q" aria-label="Search organisations" placeholder="Search organisation, code or focus" defaultValue={params.q ?? ''} />
-        <Link className="btn" href="/admin/partners/new">
-          ＋ Add organisation
-        </Link>
+        <ModalTrigger
+          label="＋ Add organisation"
+          title="Add a partner organisation"
+          sub="New organisations get the default annual budget from Settings unless you set one."
+        >
+          <PartnerForm action={createPartner} inModal />
+        </ModalTrigger>
       </FilterBar>
       <section className="panel flush">
         <div className="tablewrap">

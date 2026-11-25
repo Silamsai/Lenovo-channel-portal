@@ -25,6 +25,7 @@ export default async function PortalLayout({ children }: { children: React.React
       <header className="topbar">
         <Link href={homeFor(user.role)} className="brand">
           <img className="wordmark-logo" src={brand.logo} alt={brand.name} />
+          <span className="brand-divider" aria-hidden="true" />
           <span className="brand-product">{brand.product}</span>
         </Link>
         <div className="topbar-main">
