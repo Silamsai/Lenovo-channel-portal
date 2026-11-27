@@ -27,10 +27,6 @@ export default async function PortalLayout({ children }: { children: React.React
           <span className="brand-product">{brand.product}</span>
         </Link>
         <div className="topright">
-          <span className="demo-tag">{brand.name.toUpperCase()} DEMO / SAMPLE DATA</span>
-          <button type="button" className="btn quiet" title="Demo environment">
-            Reset demo
-          </button>
           <div className="top-user">
             <span>{ROLE_LABEL[user.role]}</span>
             <span className="sep">·</span>
