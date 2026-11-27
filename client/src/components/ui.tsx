@@ -25,10 +25,34 @@ export function Badge({ children }: { children: string }) {
  * (components/TopbarTitle.tsx), so here only the page's action buttons are rendered.
  * title/sub/role/eyebrow are kept as props so pages can still pass them (and for screen readers).
  */
-export function PageHead({ title, action }: { title: ReactNode; sub?: ReactNode; action?: ReactNode; role?: Role; eyebrow?: string }) {
+export function PageHead({
+  title,
+  sub,
+  action,
+  role = 'PARTNER',
+  eyebrow,
+}: {
+  title: ReactNode;
+  sub?: ReactNode;
+  action?: ReactNode;
+  role?: Role;
+  eyebrow?: string;
+}) {
+  const defaultEyebrow =
+    eyebrow ??
+    (role === 'REVIEWER'
+      ? 'Programme review'
+      : role === 'ADMIN'
+        ? 'Platform administration'
+        : 'Partner workspace');
+
   return (
     <div className="pagetop">
-      <h1 className="visually-hidden">{title}</h1>
+      <div className="pagetop-head">
+        {defaultEyebrow && <p className="eyebrow brand-eyebrow">{defaultEyebrow}</p>}
+        <h1>{title}</h1>
+        {sub && <p className="sub">{sub}</p>}
+      </div>
       {action && <div className="pagetop-action">{action}</div>}
     </div>
   );
@@ -106,14 +130,14 @@ export function Flash({ message }: { message?: string }) {
  * GET filter form: changing a select reloads the page with new query parameters.
  * Uses next/form so the new results load without a full page reload.
  */
-export function FilterBar({ action, children, quarter }: { action: string; children?: ReactNode; quarter?: string }) {
+export function FilterBar({ action, children, quarter, label = 'Reporting period' }: { action: string; children?: ReactNode; quarter?: string; label?: string }) {
   return (
     <Form action={action} className="filters">
       {children}
       {quarter !== undefined && (
         <div className="inline-field">
-          <label htmlFor="quarter">Quarter</label>
-          <AutoSubmitSelect name="quarter" label="Quarter" value={quarter} options={[['all', 'All quarters'], ...QUARTERS.map((q) => [q, quarterLabel(q)] as [string, string])]} />
+          <label htmlFor="quarter">{label}</label>
+          <AutoSubmitSelect name="quarter" label={label} value={quarter} options={[['all', 'All quarters'], ...QUARTERS.map((q) => [q, quarterLabel(q)] as [string, string])]} />
         </div>
       )}
       <noscript>

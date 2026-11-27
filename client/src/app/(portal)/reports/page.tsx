@@ -17,8 +17,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <Crumbs items={['Reports']} />
       <PageHead
         role={user.role}
-        title="Programme performance"
-        sub="Operational reporting. Partner-reported results are shown separately from platform activity."
+        title="Reports"
+        sub="Campaign performance, claims and operational reporting by quarter."
         action={
           <a className="btn secondary" href={`/download/reports/export.csv?quarter=${encodeURIComponent(quarter)}`}>
             Export CSV

@@ -237,35 +237,70 @@ function StepPerformance({ item, user, rules }: { item: Funding; user: User; rul
 
   return (
     <>
-      <Note>Results are required to complete the campaign and submit its claim. Counts are unique people or actions. Enter 0 for a measured zero.</Note>
+      {isPartner ? (
+        <Note>Results are required to complete the campaign and submit its claim. Counts are unique people or actions. Enter 0 for a measured zero.</Note>
+      ) : !c.resultsReady ? (
+        <Note>The partner has not submitted campaign performance results yet. Once recorded by {item.partner.name}, the metrics and POE will appear here for audit.</Note>
+      ) : (
+        <Note>Campaign performance recorded by {item.partner.name}. Review the reported metrics and supporting proof of execution below.</Note>
+      )}
       <div className="grid">
         <section className="panel">
           <h2>Campaign performance</h2>
-          <ActionForm action={savePerformance.bind(null, item.id, fields)}>
-            <fieldset disabled={locked}>
-              <div className="fields">
-                {c.metricFields.map(([k, label]) => (
-                  <div className="field" key={k}>
-                    <label htmlFor={`m-${k}`}>{label} *</label>
-                    <input id={`m-${k}`} name={`m_${k}`} type="number" min="0" step="1" required defaultValue={c.metrics[k] ?? ''} />
-                  </div>
-                ))}
-                <div className="field">
-                  <label htmlFor="m-spend">Actual eligible spend (£) *</label>
-                  <input id="m-spend" name="spend" type="number" min="0" step="0.01" required defaultValue={c.actualSpend ?? ''} />
-                </div>
+          {!isPartner ? (
+            !c.resultsReady ? (
+              <div style={{ background: 'var(--surface-alt)', border: '1px solid var(--line)', padding: '24px 20px', borderRadius: 'var(--radius)', marginTop: '8px' }}>
+                <p style={{ margin: '0 0 6px', fontWeight: 600, fontSize: '14px', color: 'var(--ink)' }}>
+                  Awaiting partner submission
+                </p>
+                <p className="muted small" style={{ margin: 0, lineHeight: 1.6 }}>
+                  {item.partner.name} has not recorded performance metrics for this campaign yet. When the partner completes the campaign execution and enters their registrations, attendees, and eligible spend, the figures will be displayed here for audit.
+                </p>
               </div>
-              {!locked && (
-                <div className="actions">
-                  <Submit value="save">Save performance</Submit>
-                  <Submit value="complete" secondary>
-                    Complete campaign
-                  </Submit>
+            ) : (
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', margin: '12px 0 16px' }}>
+                  {c.metricFields.map(([k, label]) => (
+                    <div key={k} style={{ background: 'var(--surface-alt)', padding: '12px 14px', borderRadius: 'var(--radius)', border: '1px solid var(--line)' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>{label}</span>
+                      <strong style={{ fontSize: '20px', color: 'var(--ink)', marginTop: '4px', display: 'block' }}>{c.metrics[k] ?? 0}</strong>
+                    </div>
+                  ))}
+                  <div style={{ background: 'var(--surface-alt)', padding: '12px 14px', borderRadius: 'var(--radius)', border: '1px solid var(--line)' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>Actual eligible spend</span>
+                    <strong style={{ fontSize: '20px', color: 'var(--ink)', marginTop: '4px', display: 'block' }}>{money(c.actualSpend)}</strong>
+                  </div>
                 </div>
-              )}
-            </fieldset>
-          </ActionForm>
-          {locked && isPartner && <p className="muted small">Performance is locked with the submitted claim.</p>}
+                <p className="muted small" style={{ margin: 0 }}>Reported by {item.partner.name} on campaign completion.</p>
+              </div>
+            )
+          ) : (
+            <ActionForm action={savePerformance.bind(null, item.id, fields)}>
+              <fieldset disabled={locked}>
+                <div className="fields">
+                  {c.metricFields.map(([k, label]) => (
+                    <div className="field" key={k}>
+                      <label htmlFor={`m-${k}`}>{label} *</label>
+                      <input id={`m-${k}`} name={`m_${k}`} type="number" min="0" step="1" required defaultValue={c.metrics[k] ?? ''} />
+                    </div>
+                  ))}
+                  <div className="field">
+                    <label htmlFor="m-spend">Actual eligible spend (£) *</label>
+                    <input id="m-spend" name="spend" type="number" min="0" step="0.01" required defaultValue={c.actualSpend ?? ''} />
+                  </div>
+                </div>
+                {!locked && (
+                  <div className="actions">
+                    <Submit value="save">Save performance</Submit>
+                    <Submit value="complete" secondary>
+                      Complete campaign
+                    </Submit>
+                  </div>
+                )}
+              </fieldset>
+            </ActionForm>
+          )}
+          {locked && isPartner && <p className="muted small spaced">Performance is locked with the submitted claim.</p>}
         </section>
         <section className="panel">
           <h2>Funding & reporting</h2>
@@ -281,13 +316,17 @@ function StepPerformance({ item, user, rules }: { item: Funding; user: User; rul
 
       <section className="panel">
         <h2>Proof of execution</h2>
-        <p className="muted small">Approved creative carries forward from step 03. Attach the remaining evidence. Maximum 25 MB per file and 100 MB per campaign.</p>
+        <p className="muted small">
+          {isPartner
+            ? 'Approved creative carries forward from step 03. Attach the remaining evidence. Maximum 25 MB per file and 100 MB per campaign.'
+            : 'Approved creative carries forward from step 03. Supporting evidence and supplier invoices uploaded by the partner will appear here for audit.'}
+        </p>
         <Kv k="Approved campaign assets" v={`${c.assets.length} file(s) · v${c.assetVersion}`} />
         {EVIDENCE.map(({ kind, label }) => (
           <div className="poe-category" key={kind}>
             <div className="panelhead plain">
               <h3>{label}</h3>
-              <Badge>{c.evidence[kind].length ? 'Attached' : 'Required'}</Badge>
+              <Badge>{c.evidence[kind].length ? 'Attached' : isPartner ? 'Required' : 'Awaiting upload'}</Badge>
             </div>
             <FileRows
               files={c.evidence[kind]}
