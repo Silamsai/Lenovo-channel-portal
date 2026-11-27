@@ -23,7 +23,7 @@ export default async function RewardsPage() {
   return (
     <>
       <Crumbs items={['Rewards']} />
-      <PageHead role={user.role} title="Partner rewards" sub="Earn points for approved activity and request programme support." />
+      <PageHead role={user.role} title="Rewards" sub="Earn points for approved activity and request programme support." />
       <div className="metrics">
         <Metric label="Points balance" value={d.balance.toLocaleString('en-GB')} note="Approved points" />
         <Metric label="Available to redeem" value={d.available.toLocaleString('en-GB')} note="After pending redemptions" />

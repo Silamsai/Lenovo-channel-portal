@@ -5,6 +5,7 @@ import { brand } from '@/lib/brand';
 import { getUser, homeFor } from '@/lib/session';
 import { ActionForm, Submit } from '@/components/forms';
 import { PasswordInput } from '@/components/PasswordInput';
+import { DemoCredentials } from '@/components/DemoCredentials';
 import { LuChartNoAxesCombined, LuPlay, LuUsers } from 'react-icons/lu';
 
 const journeyIcons = [LuChartNoAxesCombined, LuPlay, LuUsers];
@@ -68,7 +69,8 @@ export default async function LoginPage() {
             </div>
           </ActionForm>
 
-          <p className="login-note">No account yet? Ask your programme administrator to create one for you.</p>
+          <p className="muted small spaced">No account yet? Ask your programme administrator to create one for you.</p>
+          <DemoCredentials />
         </div>
       </section>
     </div>

@@ -15,7 +15,7 @@ export default async function BenefitsPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <Crumbs items={['Benefits']} />
-      <PageHead role={user.role} title="Partner benefits" sub="Discover available support and track your requests." />
+      <PageHead role={user.role} title="Benefits" sub="Discover available support and track your requests." />
       <Flash message={sent ? 'Benefit requested. The programme team will review it.' : undefined} />
       <div className="cards">
         {data.items.map((b) => (

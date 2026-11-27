@@ -19,7 +19,7 @@ export default async function EnablementPage({ searchParams }: { searchParams: P
   return (
     <>
       <Crumbs items={['Enablement']} />
-      <PageHead role={user.role} title="Campaign essentials" sub="Prepare your team to position the campaign and run the activity." action={<Badge>{done === modules.length ? 'Completed' : 'In progress'}</Badge>} />
+      <PageHead role={user.role} title="Enablement" sub="Campaign essentials to prepare your team to position the campaign and run the activity." action={<Badge>{done === modules.length ? 'Completed' : 'In progress'}</Badge>} />
       <div className="grid">
         {mod && (
           <section className="panel">

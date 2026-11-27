@@ -4,9 +4,7 @@ import { apiGet } from '@/lib/api';
 import { logout } from '@/lib/actions';
 import { brand } from '@/lib/brand';
 import { homeFor, requireUser } from '@/lib/session';
-import { NotificationBell } from '@/components/NotificationBell';
 import { SideNav } from '@/components/SideNav';
-import { TopbarTitle } from '@/components/TopbarTitle';
 
 const ROLE_LABEL = { PARTNER: 'Partner marketer', REVIEWER: 'Programme reviewer', ADMIN: 'Platform admin' } as const;
 
@@ -28,9 +26,14 @@ export default async function PortalLayout({ children }: { children: React.React
           <span className="brand-divider" aria-hidden="true" />
           <span className="brand-product">{brand.product}</span>
         </Link>
-        <div className="topbar-main">
-          <TopbarTitle role={user.role} />
-          <NotificationBell />
+        <div className="topright">
+          <div className="top-user">
+            <span>{ROLE_LABEL[user.role]}</span>
+            <span className="sep">·</span>
+            <form action={logout} className="inline-form">
+              <button className="top-signout">Sign out</button>
+            </form>
+          </div>
         </div>
       </header>
       <aside className="sidebar">
