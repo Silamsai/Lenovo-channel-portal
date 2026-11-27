@@ -23,6 +23,7 @@ export default async function PortalLayout({ children }: { children: React.React
       <header className="topbar">
         <Link href={homeFor(user.role)} className="brand">
           <img className="wordmark-logo" src={brand.logo} alt={brand.name} />
+          <span className="brand-divider" aria-hidden="true" />
           <span className="brand-product">{brand.product}</span>
         </Link>
         <div className="topright">
@@ -44,9 +45,7 @@ export default async function PortalLayout({ children }: { children: React.React
           <span className="avatar">{(user.partner?.name ?? brand.name).charAt(0)}</span>
           <div>
             <strong>{user.partner?.name ?? (isAdmin ? 'Platform administration' : `${brand.name} programme team`)}</strong>
-            <small>
-              {brand.programme} · {brand.market}
-            </small>
+            <small>{brand.market}</small>
           </div>
         </div>
         <SideNav role={user.role} queueCount={queueCount} />

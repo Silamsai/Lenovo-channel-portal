@@ -84,7 +84,7 @@ function PartnerOverview({
           <strong>
             Turn ambition
             <br />
-            into impact.
+            <em>into impact.</em>
           </strong>
           <p>Funding to performance, all in one workspace.</p>
         </div>

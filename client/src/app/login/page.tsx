@@ -6,6 +6,9 @@ import { getUser, homeFor } from '@/lib/session';
 import { ActionForm, Submit } from '@/components/forms';
 import { PasswordInput } from '@/components/PasswordInput';
 import { DemoCredentials } from '@/components/DemoCredentials';
+import { LuChartNoAxesCombined, LuPlay, LuUsers } from 'react-icons/lu';
+
+const journeyIcons = [LuChartNoAxesCombined, LuPlay, LuUsers];
 
 export const metadata: Metadata = { title: 'Sign in' };
 
@@ -16,25 +19,40 @@ export default async function LoginPage() {
   return (
     <div className="login-layout">
       <section className="login-brand">
-        <img className="login-logo" src={brand.logo} alt={brand.name} />
-        <div>
-          <p className="eyebrow light">{brand.product}</p>
+        <div className="login-lockup">
+          <img className="login-logo" src={brand.logo} alt={brand.name} />
+          <span className="login-lockup-divider" aria-hidden="true" />
+          <span className="login-product">{brand.product}</span>
+        </div>
+
+        <div className="login-hero">
           <h1>
-            {brand.loginHeadline.map((line) => (
-              <span key={line}>
+            {brand.loginHeadline.map((line, i) => (
+              <span key={line} className={i === brand.loginHeadline.length - 1 ? 'accent' : undefined}>
                 {line}
-                <br />
               </span>
             ))}
           </h1>
           <p className="login-tagline">{brand.loginTagline}</p>
+
+          <span className="login-rule" aria-hidden="true" />
+          <ul className="login-journey">
+            {brand.journey.map((step, i) => {
+              const Icon = journeyIcons[i % journeyIcons.length];
+              return (
+                <li key={step}>
+                  <Icon aria-hidden="true" />
+                  <span>{step}</span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
-        <div className="login-path">{brand.journey.join('   →   ')}</div>
       </section>
 
       <section className="login-form-wrap">
         <div className="login-form">
-          <p className="eyebrow">{brand.programme}</p>
+          <p className="login-eyebrow">{brand.programme}</p>
           <h2>Welcome to {brand.product}</h2>
           <p className="login-lead">Sign in to your workspace.</p>
           <ActionForm action={login}>
